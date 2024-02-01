@@ -1,5 +1,16 @@
+!/source/
+
+/x64
+/.vs
+
 # Prerequisites
 *.d
+*.sln
+*.vcxproj
+*.filters
+*.user
+*.gitignore
+*.gitattributes
 
 # Compiled Object files
 *.slo
