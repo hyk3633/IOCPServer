@@ -7,6 +7,7 @@
 #include <iostream>
 #include <thread>
 #include "Define.h"
+#include "DBConnector.h"
 
 using namespace std;
 
@@ -54,5 +55,9 @@ protected:
 
 	// 테스트용
 	int tempNumber = 0;
+
+private:
+
+	DBConnector& dbConnector = DBConnector::GetInstance();
 
 };

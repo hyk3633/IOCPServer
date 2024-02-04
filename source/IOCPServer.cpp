@@ -1,7 +1,6 @@
 #include "IOCPServer.h"
 #include <sstream>
 
-
 unsigned int WINAPI WorkerThreadStart(LPVOID param)
 {
 	IOCPServer* iocpEvent = reinterpret_cast<IOCPServer*>(param);
@@ -11,7 +10,7 @@ unsigned int WINAPI WorkerThreadStart(LPVOID param)
 
 IOCPServer::IOCPServer()
 {
-
+	
 }
 
 IOCPServer::~IOCPServer()
@@ -26,12 +25,31 @@ IOCPServer::~IOCPServer()
 
 bool IOCPServer::InitializeServer()
 {
+	// DB 초기화 및 연결
+	if (dbConnector.Initialize())
+	{
+		if (dbConnector.Connect() == false) 
+			return false;
+	}
+	else return false;
+
+	string id, pw;
+	cout << "id pw 입력 : ";
+	cin >> id >> pw;
+	if (dbConnector.PlayerLogin(id, pw) == false)
+	{
+		cout << "[DB Error] : Invalid id or password." << endl;
+	}
+
+	// **********test code!!
+	return false;
+
 	// WinSock 초기화
 	WSADATA wsaData;
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (result != 0)
 	{
-		cout << "[Error] : Failed to initializing WinSock!\n";
+		cout << "[Error] : Failed to initializing WinSock!" << endl;
 		return false;
 	}
 
@@ -39,7 +57,7 @@ bool IOCPServer::InitializeServer()
 	listenSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 	if (listenSocket == INVALID_SOCKET)
 	{
-		cout << "[Error] : Failed to creating a socket!\n";
+		cout << "[Error] : Failed to creating a socket!" << endl;
 		WSACleanup();
 		return false;
 	}
@@ -54,7 +72,7 @@ bool IOCPServer::InitializeServer()
 	result = bind(listenSocket, reinterpret_cast<sockaddr*>(&serverAddr), sizeof(serverAddr));
 	if (result != 0)
 	{
-		cout << "[Error] : Failed to binding socket!\n";
+		cout << "[Error] : Failed to binding socket!" << endl;
 		closesocket(listenSocket);
 		WSACleanup();
 		return false;
@@ -64,12 +82,12 @@ bool IOCPServer::InitializeServer()
 	result = listen(listenSocket, 5);
 	if (result != 0)
 	{
-		cout << "[Error] : Failed to listening a socket!\n";
+		cout << "[Error] : Failed to listening a socket!" << endl;
 		closesocket(listenSocket);
 		WSACleanup();
 		return false;
 	}
-	cout << "[Log] Successfully initialzed server!!\n";
+	cout << "[Log] Successfully initialzed server!!" << endl;
 
 	return true;
 }
@@ -80,7 +98,7 @@ void IOCPServer::StartServer()
 	iocpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
 	if (iocpHandle == NULL)
 	{
-		cout << "[Error] : Failed to creating completion port!\n";
+		cout << "[Error] : Failed to creating completion port!" << endl;
 		closesocket(listenSocket);
 		WSACleanup();
 		return;
@@ -89,15 +107,20 @@ void IOCPServer::StartServer()
 	// Worker thread 생성
 	if (!CreateWorkerThreads())
 	{
+		cout << "[Error] : Failed to creating worker threads!" << endl;
+		closesocket(listenSocket);
+		WSACleanup();
 		return;
 	}
 
-	cout << "[Log] : Server started!\n";
+	cout << "[Log] : Server started!" << endl;
 
 	// Accepter thread 생성
 	accepterThread = thread([this]() { AccepterThread(); });
+
 	accepterThread.join();
 	closesocket(listenSocket);
+	dbConnector.Close();
 }
 
 bool IOCPServer::CreateWorkerThreads()
@@ -129,10 +152,11 @@ void IOCPServer::WorkerThread()
 	char buff[100];
 	while (1)
 	{
+		// IO 완료된 작업 꺼내오기
 		result = GetQueuedCompletionStatus(iocpHandle, &recvBytes, (PULONG_PTR)&completionKey, (LPOVERLAPPED*)&recvSocketInfo, INFINITE);
 		if (result == 0 || recvBytes == 0)
 		{
-			cout << "Client end connection\n";
+			cout << "Client end connection" << endl;
 			closesocket(recvSocketInfo->socket);
 			free(recvSocketInfo);
 			continue;
@@ -164,7 +188,7 @@ void IOCPServer::WorkerThread()
 		result = WSARecv(socketInfo->socket, &(socketInfo->wsaBuf), 1, (LPDWORD)&socketInfo, &flags, (LPWSAOVERLAPPED) & (socketInfo->overlapped), NULL);
 		if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
 		{
-			cout << "[Error] : WSARecv failed -> " << WSAGetLastError();
+			cout << "[Error] : WSARecv failed -> " << WSAGetLastError() << endl;
 		}
 	}
 }
@@ -194,8 +218,10 @@ void IOCPServer::AccepterThread()
 		socketInfo->wsaBuf.buf = dataBuf;
 		socketInfo->clientNumber = tempNumber++;
 
+		// iocp에 클라이언트 소켓 등록
 		iocpHandle = CreateIoCompletionPort((HANDLE)clientSocket, iocpHandle, (DWORD)socketInfo, 0);
 
+		// 비동기 recv 시작
 		result = WSARecv(socketInfo->socket, &socketInfo->wsaBuf, 1, &recvBytes, &flags, &(socketInfo->overlapped), NULL);
 		if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
 		{
