@@ -16,6 +16,7 @@ struct SocketInfo
 	WSAOVERLAPPED overlapped;	// overlapped 구조체
 	WSABUF wsaBuf;				// io 작업버퍼
 	SOCKET socket;
+	char msgBuf[PACKET_SIZE];
 	int clientNumber;
 };
 
@@ -50,8 +51,6 @@ protected:
 	SocketInfo* socketInfo;
 
 	int threadCount;
-
-	char dataBuf[4096];
 
 	// 테스트용
 	int tempNumber = 0;

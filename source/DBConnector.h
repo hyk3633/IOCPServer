@@ -48,11 +48,15 @@ private:
 	// 에러가 발생하면, 에러코드를 통해 어떤 에러인지 알려줌
 	void ErrorDisplay(RETCODE retCode);
 
+private:
+
 	SQLHENV		henv;
 	SQLHDBC		hdbc;
 	SQLHSTMT	hstmt;
 
 	// 쿼리 관련 변수
 	SQLLEN param1, param2;
+
+	bool isPrimaryKeyError;
 
 };

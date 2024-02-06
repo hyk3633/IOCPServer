@@ -33,17 +33,6 @@ bool IOCPServer::InitializeServer()
 	}
 	else return false;
 
-	string id, pw;
-	cout << "id pw 입력 : ";
-	cin >> id >> pw;
-	if (dbConnector.PlayerLogin(id, pw) == false)
-	{
-		cout << "[DB Error] : Invalid id or password." << endl;
-	}
-
-	// **********test code!!
-	return false;
-
 	// WinSock 초기화
 	WSADATA wsaData;
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -149,14 +138,14 @@ void IOCPServer::WorkerThread()
 	DWORD recvBytes;
 	SocketInfo* completionKey;
 	SocketInfo* recvSocketInfo; // unique ptr?
-	char buff[100];
+
 	while (1)
 	{
 		// IO 완료된 작업 꺼내오기
 		result = GetQueuedCompletionStatus(iocpHandle, &recvBytes, (PULONG_PTR)&completionKey, (LPOVERLAPPED*)&recvSocketInfo, INFINITE);
-		if (result == 0 || recvBytes == 0)
+		if (!result || !recvBytes)
 		{
-			cout << "Client end connection" << endl;
+			if(!result) cout << "[Log] : Client end connection." << endl;
 			closesocket(recvSocketInfo->socket);
 			free(recvSocketInfo);
 			continue;
@@ -164,27 +153,69 @@ void IOCPServer::WorkerThread()
 
 		if (recvSocketInfo == nullptr) continue;
 
+		recvSocketInfo->wsaBuf.len = recvBytes;
 		int packetType;
 		stringstream recvStream;
 
 		recvStream << recvSocketInfo->wsaBuf.buf;
 		recvStream >> packetType;
-		ZeroMemory(&buff, 100);
-		recvStream >> buff;
 
-		if (static_cast<EPacketType>(packetType) == EPacketType::TEST)
+		// 함수 포인터로
+		if (static_cast<EPacketType>(packetType) == EPacketType::SIGNUP)
 		{
-			cout << recvSocketInfo->clientNumber << " : 패킷 타입 TEST\n";
-			cout << buff << "\n";
+			string id, pw;
+			recvStream >> id >> pw;
+
+			stringstream sendStream;
+			sendStream << packetType << "\n";
+			sendStream << dbConnector.PlayerSignUp(id, pw) << "\n";
+
+			CopyMemory(recvSocketInfo->msgBuf, sendStream.str().c_str(), sendStream.str().length());
+			recvSocketInfo->wsaBuf.buf = recvSocketInfo->msgBuf;
+			recvSocketInfo->wsaBuf.len = sendStream.str().length();
+
+			int nResult;
+			DWORD	sendBytes;
+			DWORD	dwFlags = 0;
+
+			nResult = WSASend(recvSocketInfo->socket, &(recvSocketInfo->wsaBuf), 1, &sendBytes, dwFlags, NULL, NULL);
+			if (nResult == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+			{
+				printf_s("[ERROR] WSASend 실패 : ", WSAGetLastError());
+			}
 		}
-		else if (static_cast<EPacketType>(packetType) == EPacketType::RECV)
+		else if (static_cast<EPacketType>(packetType) == EPacketType::LOGIN)
 		{
-			cout << recvSocketInfo->clientNumber << " : 패킷 타입 RECV\n";
-			cout << buff << "\n";
+			string id, pw;
+			recvStream >> id >> pw;
+
+			stringstream sendStream;
+			sendStream << packetType << "\n";
+			sendStream << dbConnector.PlayerLogin(id, pw) << "\n";
+
+			CopyMemory(recvSocketInfo->msgBuf, sendStream.str().c_str(), sendStream.str().length());
+			recvSocketInfo->wsaBuf.buf = recvSocketInfo->msgBuf;
+			recvSocketInfo->wsaBuf.len = sendStream.str().length();
+
+			int nResult;
+			DWORD	sendBytes;
+			DWORD	dwFlags = 0;
+
+			nResult = WSASend(recvSocketInfo->socket, &(recvSocketInfo->wsaBuf), 1, &sendBytes, dwFlags, NULL, NULL);
+			if (nResult == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+			{
+				printf_s("[ERROR] WSASend 실패 : ", WSAGetLastError());
+			}
 		}
 
 		// 함수로 캡슐화 하기
 		DWORD flags = 0;
+
+		ZeroMemory(&(socketInfo->overlapped), sizeof(OVERLAPPED));
+		ZeroMemory(socketInfo->msgBuf, PACKET_SIZE);
+		socketInfo->wsaBuf.len = PACKET_SIZE;
+		socketInfo->wsaBuf.buf = socketInfo->msgBuf;
+
 		result = WSARecv(socketInfo->socket, &(socketInfo->wsaBuf), 1, (LPDWORD)&socketInfo, &flags, (LPWSAOVERLAPPED) & (socketInfo->overlapped), NULL);
 		if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
 		{
@@ -214,12 +245,14 @@ void IOCPServer::AccepterThread()
 
 		socketInfo = new SocketInfo();
 		socketInfo->socket = clientSocket;
-		socketInfo->wsaBuf.len = 4096;
-		socketInfo->wsaBuf.buf = dataBuf;
+		socketInfo->wsaBuf.len = PACKET_SIZE;
+		socketInfo->wsaBuf.buf = socketInfo->msgBuf;
 		socketInfo->clientNumber = tempNumber++;
 
 		// iocp에 클라이언트 소켓 등록
 		iocpHandle = CreateIoCompletionPort((HANDLE)clientSocket, iocpHandle, (DWORD)socketInfo, 0);
+
+		cout << "[Log] : A new player has been connected.\n";
 
 		// 비동기 recv 시작
 		result = WSARecv(socketInfo->socket, &socketInfo->wsaBuf, 1, &recvBytes, &flags, &(socketInfo->overlapped), NULL);

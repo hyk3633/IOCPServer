@@ -37,7 +37,6 @@ bool DBConnector::Initialize()
 
 bool DBConnector::Connect()
 {
-	cout << "connect\n";
 	SQLRETURN retcode;
 	wstring odbc = L"game_odbc";
 	//wstring id = L"id";
@@ -47,9 +46,6 @@ bool DBConnector::Connect()
 
 	// Windows 통합인증 경우
 	retcode = SQLConnect(hdbc, (wchar_t*)odbc.c_str(), SQL_NTS, nullptr, 0, nullptr, 0);
-
-	// SQL 인증 id와 password를 입력하는 경우
-	//retcode = SQLConnect(hdbc, (wchar_t*)odbc.c_str(), SQL_NTS, (wchar_t*)id.c_str(), SQL_NTS, (wchar_t*)pwd.c_str(), SQL_NTS);
 
 	// Allocate statement handle  
 	if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO)
@@ -92,11 +88,11 @@ bool DBConnector::ExcuteQuery(const string& id, const string& pw, EQueryType que
 	wstring query;
 	if (queryType == EQueryType::LOGIN)
 	{
-		query = L"SELECT * FROM IOCPTest.dbo.PlayerLoginInfo WHERE (PlayerID = ? AND Password = ?)";
+		query = L"SELECT * FROM IOCPTest.dbo.AccountInfo WHERE (PlayerID = ? AND Password = ?)";
 	}
 	else if (queryType == EQueryType::SIGNUP)
 	{
-		query = L"INSERT INTO IOCPTest.dbo.PlayerLoginInfo(PlayerID, Password) VALUES (?, ?)";
+		query = L"INSERT INTO IOCPTest.dbo.AccountInfo(PlayerID, Password) VALUES (?, ?)";
 	}
 	else
 	{
@@ -119,6 +115,8 @@ bool DBConnector::ExcuteQuery(const string& id, const string& pw, EQueryType que
 	else
 	{
 		ErrorDisplay(retcode);
+		if (isPrimaryKeyError)
+			isPrimaryKeyError = false;
 	}
 
 	SQLCloseCursor(hstmt);
@@ -144,6 +142,11 @@ void DBConnector::ErrorDisplay(RETCODE retCode)
 		if (wcsncmp(wszState, L"01004", 5))
 		{
 			fwprintf(stderr, L"[%5.5s] %s (%d)\n", wszState, wszMessage, error);
+		}
+		if (error == 2627)
+		{
+			isPrimaryKeyError = true;
+			return;
 		}
 	}
 }
