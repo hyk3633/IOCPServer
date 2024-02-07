@@ -1,6 +1,8 @@
 #include "IOCPServer.h"
 #include <sstream>
 
+DBConnector* IOCPServer::dbConnector = DBConnector::GetInstance();
+
 unsigned int WINAPI WorkerThreadStart(LPVOID param)
 {
 	IOCPServer* iocpEvent = reinterpret_cast<IOCPServer*>(param);
@@ -26,9 +28,9 @@ IOCPServer::~IOCPServer()
 bool IOCPServer::InitializeServer()
 {
 	// DB 초기화 및 연결
-	if (dbConnector.Initialize())
+	if (dbConnector->Initialize())
 	{
-		if (dbConnector.Connect() == false) 
+		if (dbConnector->Connect() == false)
 			return false;
 	}
 	else return false;
@@ -76,6 +78,11 @@ bool IOCPServer::InitializeServer()
 		WSACleanup();
 		return false;
 	}
+
+	packetCallbacks = vector<void(*)(SocketInfo*, stringstream&)>(static_cast<int>(EPacketType::PACKETTYPE_MAX));
+	packetCallbacks[static_cast<int>(EPacketType::SIGNUP)] = SignUp;
+	packetCallbacks[static_cast<int>(EPacketType::LOGIN)] = Login;
+
 	cout << "[Log] Successfully initialzed server!!" << endl;
 
 	return true;
@@ -109,7 +116,7 @@ void IOCPServer::StartServer()
 
 	accepterThread.join();
 	closesocket(listenSocket);
-	dbConnector.Close();
+	dbConnector->Close();
 }
 
 bool IOCPServer::CreateWorkerThreads()
@@ -160,67 +167,17 @@ void IOCPServer::WorkerThread()
 		recvStream << recvSocketInfo->wsaBuf.buf;
 		recvStream >> packetType;
 
-		// 함수 포인터로
-		if (static_cast<EPacketType>(packetType) == EPacketType::SIGNUP)
+		// 함수 포인터로 패킷 처리
+		if (packetType < static_cast<int>(EPacketType::PACKETTYPE_MAX))
 		{
-			string id, pw;
-			recvStream >> id >> pw;
-
-			stringstream sendStream;
-			sendStream << packetType << "\n";
-			sendStream << dbConnector.PlayerSignUp(id, pw) << "\n";
-
-			CopyMemory(recvSocketInfo->msgBuf, sendStream.str().c_str(), sendStream.str().length());
-			recvSocketInfo->wsaBuf.buf = recvSocketInfo->msgBuf;
-			recvSocketInfo->wsaBuf.len = sendStream.str().length();
-
-			int nResult;
-			DWORD	sendBytes;
-			DWORD	dwFlags = 0;
-
-			nResult = WSASend(recvSocketInfo->socket, &(recvSocketInfo->wsaBuf), 1, &sendBytes, dwFlags, NULL, NULL);
-			if (nResult == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
-			{
-				printf_s("[ERROR] WSASend 실패 : ", WSAGetLastError());
-			}
+			packetCallbacks[packetType](recvSocketInfo, recvStream);
 		}
-		else if (static_cast<EPacketType>(packetType) == EPacketType::LOGIN)
+		else
 		{
-			string id, pw;
-			recvStream >> id >> pw;
-
-			stringstream sendStream;
-			sendStream << packetType << "\n";
-			sendStream << dbConnector.PlayerLogin(id, pw) << "\n";
-
-			CopyMemory(recvSocketInfo->msgBuf, sendStream.str().c_str(), sendStream.str().length());
-			recvSocketInfo->wsaBuf.buf = recvSocketInfo->msgBuf;
-			recvSocketInfo->wsaBuf.len = sendStream.str().length();
-
-			int nResult;
-			DWORD	sendBytes;
-			DWORD	dwFlags = 0;
-
-			nResult = WSASend(recvSocketInfo->socket, &(recvSocketInfo->wsaBuf), 1, &sendBytes, dwFlags, NULL, NULL);
-			if (nResult == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
-			{
-				printf_s("[ERROR] WSASend 실패 : ", WSAGetLastError());
-			}
+			cout << "[Error] : Invalid packet type!\n";
 		}
 
-		// 함수로 캡슐화 하기
-		DWORD flags = 0;
-
-		ZeroMemory(&(socketInfo->overlapped), sizeof(OVERLAPPED));
-		ZeroMemory(socketInfo->msgBuf, PACKET_SIZE);
-		socketInfo->wsaBuf.len = PACKET_SIZE;
-		socketInfo->wsaBuf.buf = socketInfo->msgBuf;
-
-		result = WSARecv(socketInfo->socket, &(socketInfo->wsaBuf), 1, (LPDWORD)&socketInfo, &flags, (LPWSAOVERLAPPED) & (socketInfo->overlapped), NULL);
-		if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
-		{
-			cout << "[Error] : WSARecv failed -> " << WSAGetLastError() << endl;
-		}
+		Recv(socketInfo);
 	}
 }
 
@@ -247,7 +204,6 @@ void IOCPServer::AccepterThread()
 		socketInfo->socket = clientSocket;
 		socketInfo->wsaBuf.len = PACKET_SIZE;
 		socketInfo->wsaBuf.buf = socketInfo->msgBuf;
-		socketInfo->clientNumber = tempNumber++;
 
 		// iocp에 클라이언트 소켓 등록
 		iocpHandle = CreateIoCompletionPort((HANDLE)clientSocket, iocpHandle, (DWORD)socketInfo, 0);
@@ -263,4 +219,61 @@ void IOCPServer::AccepterThread()
 			return;
 		}
 	}
+}
+
+void IOCPServer::Send(SocketInfo* socketInfo, stringstream& sendStream)
+{
+	CopyMemory(socketInfo->msgBuf, sendStream.str().c_str(), sendStream.str().length());
+	socketInfo->wsaBuf.buf = socketInfo->msgBuf;
+	socketInfo->wsaBuf.len = sendStream.str().length();
+
+	int nResult;
+	DWORD	sendBytes;
+	DWORD	dwFlags = 0;
+
+	nResult = WSASend(socketInfo->socket, &(socketInfo->wsaBuf), 1, &sendBytes, dwFlags, NULL, NULL);
+	if (nResult == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+	{
+		cout << "[Error] : Failed to send packet!\n";
+	}
+}
+
+void IOCPServer::Recv(SocketInfo* socketInfo)
+{
+	DWORD flags = 0;
+
+	ZeroMemory(&(socketInfo->overlapped), sizeof(OVERLAPPED));
+	ZeroMemory(socketInfo->msgBuf, PACKET_SIZE);
+	socketInfo->wsaBuf.len = PACKET_SIZE;
+	socketInfo->wsaBuf.buf = socketInfo->msgBuf;
+
+	int result = WSARecv(socketInfo->socket, &(socketInfo->wsaBuf), 1, (LPDWORD)&socketInfo, &flags, (LPWSAOVERLAPPED) & (socketInfo->overlapped), NULL);
+	if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+	{
+		cout << "[Error] : Failed to receive packet!\n";
+	}
+}
+
+void IOCPServer::SignUp(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	string id, pw;
+	recvStream >> id >> pw;
+	cout << "signup : " << id << " " << pw << endl;
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::SIGNUP) << "\n";
+	sendStream << dbConnector->PlayerSignUp(id, pw) << "\n";
+
+	Send(socketInfo, sendStream);
+}
+
+void IOCPServer::Login(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	string id, pw;
+	recvStream >> id >> pw;
+	cout << "Login : " << id << " " << pw << endl;
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::LOGIN) << "\n";
+	sendStream << dbConnector->PlayerLogin(id, pw) << "\n";
+
+	Send(socketInfo, sendStream);
 }

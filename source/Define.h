@@ -6,6 +6,6 @@
 enum class EPacketType
 {
 	SIGNUP,
-	LOGIN
-
+	LOGIN,
+	PACKETTYPE_MAX
 };

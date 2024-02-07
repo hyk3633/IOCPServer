@@ -10,18 +10,18 @@ const int paramSize = 10;
 
 enum class EQueryType
 {
+	SIGNUP,
 	LOGIN,
-	SIGNUP
 };
 
 class DBConnector final
 {
 public:
 
-	static DBConnector& GetInstance()
+	static DBConnector* GetInstance()
 	{
 		static DBConnector instance;
-		return instance;
+		return &instance;
 	}
 
 	bool Initialize();

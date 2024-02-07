@@ -110,6 +110,7 @@ bool DBConnector::ExcuteQuery(const string& id, const string& pw, EQueryType que
 
 	if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO)
 	{
+		SQLCloseCursor(hstmt);
 		return true;
 	}
 	else

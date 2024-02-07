@@ -17,7 +17,6 @@ struct SocketInfo
 	WSABUF wsaBuf;				// io 작업버퍼
 	SOCKET socket;
 	char msgBuf[PACKET_SIZE];
-	int clientNumber;
 };
 
 class IOCPServer
@@ -32,11 +31,21 @@ public:
 
 	virtual void StartServer();
 
-	bool CreateWorkerThreads();
-
 	virtual void WorkerThread();
 
+protected:
+
+	bool CreateWorkerThreads();
+
 	void AccepterThread();
+
+	static void Send(SocketInfo* socketInfo, stringstream& sendStream);
+
+	static void Recv(SocketInfo* socketInfo);
+
+	static void SignUp(SocketInfo* , stringstream&);
+
+	static void Login(SocketInfo* , stringstream&);
 
 protected:
 
@@ -48,15 +57,14 @@ protected:
 
 	vector<HANDLE*> workerThreads;
 
+	vector<void(*)(SocketInfo*, stringstream&)> packetCallbacks;
+
 	SocketInfo* socketInfo;
 
 	int threadCount;
 
-	// 테스트용
-	int tempNumber = 0;
-
 private:
 
-	DBConnector& dbConnector = DBConnector::GetInstance();
+	static DBConnector* dbConnector;
 
 };
