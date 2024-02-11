@@ -79,10 +79,6 @@ bool IOCPServer::InitializeServer()
 		return false;
 	}
 
-	packetCallbacks = vector<void(*)(SocketInfo*, stringstream&)>(static_cast<int>(EPacketType::PACKETTYPE_MAX));
-	packetCallbacks[static_cast<int>(EPacketType::SIGNUP)] = SignUp;
-	packetCallbacks[static_cast<int>(EPacketType::LOGIN)] = Login;
-
 	cout << "[Log] Successfully initialzed server!!" << endl;
 
 	return true;
@@ -152,7 +148,7 @@ void IOCPServer::WorkerThread()
 		result = GetQueuedCompletionStatus(iocpHandle, &recvBytes, (PULONG_PTR)&completionKey, (LPOVERLAPPED*)&recvSocketInfo, INFINITE);
 		if (!result || !recvBytes)
 		{
-			if(!result) cout << "[Log] : Client end connection." << endl;
+			cout << "[Log] : Client end connection." << endl;
 			closesocket(recvSocketInfo->socket);
 			free(recvSocketInfo);
 			continue;
@@ -177,7 +173,7 @@ void IOCPServer::WorkerThread()
 			cout << "[Error] : Invalid packet type!\n";
 		}
 
-		Recv(socketInfo);
+		Recv(recvSocketInfo);
 	}
 }
 
@@ -210,12 +206,10 @@ void IOCPServer::AccepterThread()
 
 		cout << "[Log] : A new player has been connected.\n";
 
-		// 비동기 recv 시작
 		result = WSARecv(socketInfo->socket, &socketInfo->wsaBuf, 1, &recvBytes, &flags, &(socketInfo->overlapped), NULL);
 		if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
 		{
-			cout << "[Error] : WSA_IO_PENDING ->" << WSAGetLastError();
-			closesocket(clientSocket);
+			printf_s("[Error] : Failed to IO Pending : %d", WSAGetLastError());
 			return;
 		}
 	}
@@ -252,28 +246,4 @@ void IOCPServer::Recv(SocketInfo* socketInfo)
 	{
 		cout << "[Error] : Failed to receive packet!\n";
 	}
-}
-
-void IOCPServer::SignUp(SocketInfo* socketInfo, stringstream& recvStream)
-{
-	string id, pw;
-	recvStream >> id >> pw;
-	cout << "signup : " << id << " " << pw << endl;
-	stringstream sendStream;
-	sendStream << static_cast<int>(EPacketType::SIGNUP) << "\n";
-	sendStream << dbConnector->PlayerSignUp(id, pw) << "\n";
-
-	Send(socketInfo, sendStream);
-}
-
-void IOCPServer::Login(SocketInfo* socketInfo, stringstream& recvStream)
-{
-	string id, pw;
-	recvStream >> id >> pw;
-	cout << "Login : " << id << " " << pw << endl;
-	stringstream sendStream;
-	sendStream << static_cast<int>(EPacketType::LOGIN) << "\n";
-	sendStream << dbConnector->PlayerLogin(id, pw) << "\n";
-
-	Send(socketInfo, sendStream);
 }

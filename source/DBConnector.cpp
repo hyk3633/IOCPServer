@@ -108,10 +108,25 @@ bool DBConnector::ExcuteQuery(const string& id, const string& pw, EQueryType que
 	// Äõ¸® ½ÇÇà 
 	retcode = SQLExecDirect(hstmt, (wchar_t*)query.c_str(), SQL_NTS);
 
-	if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO)
+	if (retcode == SQL_SUCCESS)
 	{
+		ZeroMemory(&ret_id, paramSize);
+		ZeroMemory(&ret_pw, paramSize);
+		slen_id = 0, slen_pw = 0;
+
+		retcode = SQLBindCol(hstmt, 1, SQL_C_CHAR, ret_id, paramSize, &slen_id);
+		retcode = SQLBindCol(hstmt, 2, SQL_C_CHAR, ret_pw, paramSize, &slen_pw);
+
+		do {
+			retcode = SQLFetch(hstmt);
+		} while (retcode != SQL_NO_DATA);
+
 		SQLCloseCursor(hstmt);
-		return true;
+
+		if (strlen(ret_id) == 0 || strlen(ret_pw) == 0) 
+			return false;
+		else
+			return true;
 	}
 	else
 	{

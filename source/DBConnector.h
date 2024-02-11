@@ -56,7 +56,8 @@ private:
 
 	// 쿼리 관련 변수
 	SQLLEN param1, param2;
-
+	char ret_id[paramSize], ret_pw[paramSize];
+	SQLLEN slen_id = 0, slen_pw = 0;
 	bool isPrimaryKeyError;
 
 };

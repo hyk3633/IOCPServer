@@ -7,5 +7,7 @@ enum class EPacketType
 {
 	SIGNUP,
 	LOGIN,
+	SPAWNPLAYER,
+	SYNCH,
 	PACKETTYPE_MAX
 };

@@ -1,8 +1,8 @@
-#include "IOCPServer.h"
+#include "GameServer.h"
 
 int main()
 {
-	IOCPServer server;
+	GameServer server;
 	if (server.InitializeServer())
 	{
 		server.StartServer();

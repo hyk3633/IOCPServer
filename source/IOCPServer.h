@@ -17,6 +17,7 @@ struct SocketInfo
 	WSABUF wsaBuf;				// io 작업버퍼
 	SOCKET socket;
 	char msgBuf[PACKET_SIZE];
+	int number;
 };
 
 class IOCPServer
@@ -27,7 +28,7 @@ public:
 
 	virtual ~IOCPServer();
 
-	bool InitializeServer();
+	virtual bool InitializeServer();
 
 	virtual void StartServer();
 
@@ -42,10 +43,6 @@ protected:
 	static void Send(SocketInfo* socketInfo, stringstream& sendStream);
 
 	static void Recv(SocketInfo* socketInfo);
-
-	static void SignUp(SocketInfo* , stringstream&);
-
-	static void Login(SocketInfo* , stringstream&);
 
 protected:
 
@@ -62,8 +59,6 @@ protected:
 	SocketInfo* socketInfo;
 
 	int threadCount;
-
-private:
 
 	static DBConnector* dbConnector;
 
