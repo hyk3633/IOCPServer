@@ -40,6 +40,8 @@ protected:
 
 	void AccepterThread();
 
+	virtual void HandleDisconnectedClient(SocketInfo* socketInfo) = 0;
+
 	static void Send(SocketInfo* socketInfo, stringstream& sendStream);
 
 	static void Recv(SocketInfo* socketInfo);

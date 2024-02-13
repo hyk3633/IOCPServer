@@ -17,6 +17,8 @@ public:
 
 protected:
 
+	virtual void HandleDisconnectedClient(SocketInfo* socketInfo) override;
+
 	static void SignUp(SocketInfo*, stringstream&);
 
 	static void Login(SocketInfo*, stringstream&);

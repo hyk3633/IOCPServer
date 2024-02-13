@@ -148,6 +148,7 @@ void IOCPServer::WorkerThread()
 		result = GetQueuedCompletionStatus(iocpHandle, &recvBytes, (PULONG_PTR)&completionKey, (LPOVERLAPPED*)&recvSocketInfo, INFINITE);
 		if (!result || !recvBytes)
 		{
+			HandleDisconnectedClient(recvSocketInfo);
 			cout << "[Log] : Client end connection." << endl;
 			closesocket(recvSocketInfo->socket);
 			free(recvSocketInfo);

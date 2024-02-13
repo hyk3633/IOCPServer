@@ -32,6 +32,23 @@ bool GameServer::InitializeServer()
 	return true;
 }
 
+void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
+{
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::PLAYERDISCONNECTED) << "\n";
+	sendStream << socketInfo->number << "\n";
+	sendStream << playerInfoSetEx.playerIDMap[socketInfo->number] << "\n";
+	cout << "[Log] : " << socketInfo->number << "번 클라이언트 (ID : " << playerInfoSetEx.playerIDMap[socketInfo->number]  << ") 접속 종료\n";
+	playerSocketMap.erase(socketInfo->number);					
+	playerInfoSetEx.playerIDMap.erase(socketInfo->number);		
+	playerInfoSetEx.playerInfoMap.erase(socketInfo->number);	
+	for (auto& info : playerSocketMap)
+	{
+		if (info.first == socketInfo->number) continue;
+		Send(info.second, sendStream);
+	}
+}
+
 void GameServer::SignUp(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	string id, pw;
