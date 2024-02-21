@@ -5,6 +5,14 @@ CRITICAL_SECTION GameServer::critsecPlayerInfo;
 unordered_map<int, SocketInfo*> GameServer::playerSocketMap;
 PlayerInfoSetEx GameServer::playerInfoSetEx;
 int GameServer::playerCount;
+CharacterInfoSet GameServer::zombieInfoSet;
+
+unsigned int WINAPI ZombieThreadStart(LPVOID param)
+{
+	GameServer* gameEvent = reinterpret_cast<GameServer*>(param);
+	gameEvent->ZombieThread();
+	return 0;
+}
 
 GameServer::GameServer()
 {
@@ -25,11 +33,62 @@ bool GameServer::InitializeServer()
 	packetCallbacks[static_cast<int>(EPacketType::SIGNUP)] = SignUp;
 	packetCallbacks[static_cast<int>(EPacketType::LOGIN)] = Login;
 	packetCallbacks[static_cast<int>(EPacketType::SPAWNPLAYER)] = SpawnOtherPlayers;
-	packetCallbacks[static_cast<int>(EPacketType::SYNCH)] = SynchronizePlayerInfo;
+	packetCallbacks[static_cast<int>(EPacketType::SYNCHPLAYER)] = SynchronizePlayerInfo;
+	packetCallbacks[static_cast<int>(EPacketType::PLAYERINPUTACTION)] = BroadcastPlyerInputAction;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
 	return true;
+}
+
+void GameServer::ZombieThread()
+{
+	InitializeZombieInfo();
+
+	while (1)
+	{
+		if (playerSocketMap.size())
+		{
+			stringstream sendStream;
+			sendStream << static_cast<int>(EPacketType::SYNCHZOMBIE) << "\n";
+			sendStream << zombieInfoSet << "\n";
+
+			EnterCriticalSection(&critsecPlayerInfo);
+			Broadcast(sendStream);
+			LeaveCriticalSection(&critsecPlayerInfo);
+		}
+		Sleep(100);
+	}
+}
+
+bool GameServer::CreateZombieThread()
+{
+	unsigned int threadId;
+	zombieThread = (HANDLE*)_beginthreadex(NULL, 0, &ZombieThreadStart, this, CREATE_SUSPENDED, &threadId);
+	if (zombieThread == NULL) return false;
+	ResumeThread(zombieThread);
+	cout << "[Log] : Start zombie thread!\n";
+	return true;
+}
+
+void GameServer::InitializeZombieInfo()
+{
+	//for (int i = 0; i < maxZombieCount; i++)
+	//{
+	//	zombieInfoSet.characterInfoMap[i] = CharacterInfo();
+	//}
+
+	zombieInfoSet.characterInfoMap[0].vectorX = -1000;
+	zombieInfoSet.characterInfoMap[0].vectorY = -1000;
+	zombieInfoSet.characterInfoMap[0].vectorZ = 97;
+
+	zombieInfoSet.characterInfoMap[1].vectorX = -1000;
+	zombieInfoSet.characterInfoMap[1].vectorY = 1000;
+	zombieInfoSet.characterInfoMap[1].vectorZ = 97;
+
+	zombieInfoSet.characterInfoMap[2].vectorX = 1000;
+	zombieInfoSet.characterInfoMap[2].vectorY = -1000;
+	zombieInfoSet.characterInfoMap[2].vectorZ = 97;
 }
 
 void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
@@ -38,15 +97,16 @@ void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
 	sendStream << static_cast<int>(EPacketType::PLAYERDISCONNECTED) << "\n";
 	sendStream << socketInfo->number << "\n";
 	sendStream << playerInfoSetEx.playerIDMap[socketInfo->number] << "\n";
+
 	cout << "[Log] : " << socketInfo->number << "번 클라이언트 (ID : " << playerInfoSetEx.playerIDMap[socketInfo->number]  << ") 접속 종료\n";
+
 	playerSocketMap.erase(socketInfo->number);					
 	playerInfoSetEx.playerIDMap.erase(socketInfo->number);		
-	playerInfoSetEx.playerInfoMap.erase(socketInfo->number);	
-	for (auto& info : playerSocketMap)
-	{
-		if (info.first == socketInfo->number) continue;
-		Send(info.second, sendStream);
-	}
+	playerInfoSetEx.characterInfoMap.erase(socketInfo->number);	
+
+	EnterCriticalSection(&critsecPlayerInfo);
+	Broadcast(sendStream, socketInfo->number);
+	LeaveCriticalSection(&critsecPlayerInfo);
 }
 
 void GameServer::SignUp(SocketInfo* socketInfo, stringstream& recvStream)
@@ -93,40 +153,59 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 	playerInfoSetEx.OutputStreamWithID(sendStream1);
 
 	// 방금 접속한 플레이어의 정보 추가
-	PlayerInfo newPlayerInfo;
+	CharacterInfo newPlayerInfo;
 	recvStream >> newPlayerInfo;
-	playerInfoSetEx.playerInfoMap[socketInfo->number] = newPlayerInfo;
+	playerInfoSetEx.characterInfoMap[socketInfo->number] = newPlayerInfo;
 
 	// 방금 접속한 플레이어의 정보를 기존 플레이어들에게 보낼 스트림에 저장 
 	PlayerInfoSetEx newPlayerInfoSet;
 	newPlayerInfoSet.playerIDMap[socketInfo->number] = playerInfoSetEx.playerIDMap[socketInfo->number];
-	newPlayerInfoSet.playerInfoMap[socketInfo->number] = newPlayerInfo;
+	newPlayerInfoSet.characterInfoMap[socketInfo->number] = newPlayerInfo;
 
 	stringstream sendStream2;
 	sendStream2 << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
-	newPlayerInfoSet.OutputStreamWithID(sendStream2);
-
-	LeaveCriticalSection(&critsecPlayerInfo);
+	newPlayerInfoSet.OutputStreamWithID(sendStream2);	
 
 	// 방금 접속한 플레이어에게 기존의 플레이어들 정보 전송
 	Send(socketInfo, sendStream1);
 
 	// 기존의 플레이어들에게 방금 접속한 플레이어 정보 전송
-	for (auto& info : playerSocketMap)
-	{
-		if (info.first == socketInfo->number) continue;
-		Send(info.second, sendStream2);
-	}
+	Broadcast(sendStream2, socketInfo->number);
+	LeaveCriticalSection(&critsecPlayerInfo);
 }
 
 void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	EnterCriticalSection(&critsecPlayerInfo);
-	recvStream >> playerInfoSetEx.playerInfoMap[socketInfo->number];
+	recvStream >> playerInfoSetEx.characterInfoMap[socketInfo->number];
 	LeaveCriticalSection(&critsecPlayerInfo);
 
 	stringstream sendStream;
-	sendStream << static_cast<int>(EPacketType::SYNCH) << "\n";
+	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";
 	sendStream << playerInfoSetEx << "\n";
 	Send(socketInfo, sendStream);
+}
+
+void GameServer::BroadcastPlyerInputAction(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	int inputType = 0;
+	recvStream >> inputType;
+
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::PLAYERINPUTACTION) << "\n";
+	sendStream << socketInfo->number << "\n";
+	sendStream << inputType << "\n";
+
+	EnterCriticalSection(&critsecPlayerInfo);
+	Broadcast(sendStream, socketInfo->number);
+	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::Broadcast(stringstream& sendStream, const int skipNumber)
+{
+	for (auto& info : playerSocketMap)
+	{
+		if (skipNumber != -1 && info.first == skipNumber) continue;
+		Send(info.second, sendStream);
+	}
 }

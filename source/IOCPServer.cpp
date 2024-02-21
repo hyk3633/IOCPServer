@@ -96,6 +96,14 @@ void IOCPServer::StartServer()
 		return;
 	}
 
+	if (!CreateZombieThread())
+	{
+		cout << "[Error] : Failed to creating zombie thread!\n";
+		closesocket(listenSocket);
+		WSACleanup();
+		return;
+	}
+
 	// Worker thread »ý¼º
 	if (!CreateWorkerThreads())
 	{

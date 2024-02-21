@@ -5,13 +5,13 @@
 
 using namespace std;
 
-struct PlayerInfo
+struct CharacterInfo
 {
 	float vectorX, vectorY, vectorZ;
 	float velocityX, velocityY, velocityZ;
 	float pitch, yaw, roll;
 
-	PlayerInfo& operator=(const PlayerInfo& info)
+	CharacterInfo& operator=(const CharacterInfo& info)
 	{
 		vectorX = info.vectorX;
 		vectorY = info.vectorY;
@@ -25,7 +25,7 @@ struct PlayerInfo
 		return *this;
 	}
 
-	friend istream& operator>>(istream& stream, PlayerInfo& info)
+	friend istream& operator>>(istream& stream, CharacterInfo& info)
 	{
 		stream >> info.vectorX >> info.vectorY >> info.vectorZ;
 		stream >> info.velocityX >> info.velocityY >> info.velocityZ;
@@ -33,7 +33,7 @@ struct PlayerInfo
 		return stream;
 	}
 
-	friend ostream& operator<<(ostream& stream, PlayerInfo& info)
+	friend ostream& operator<<(ostream& stream, CharacterInfo& info)
 	{
 		stream << info.vectorX << "\n" << info.vectorY << "\n" << info.vectorZ << "\n";
 		stream << info.velocityX << "\n" << info.velocityY << "\n" << info.velocityZ << "\n";
@@ -42,36 +42,36 @@ struct PlayerInfo
 	}
 };
 
-class PlayerInfoSet
+class CharacterInfoSet
 {
 public:
 
-	PlayerInfoSet() {};
-	~PlayerInfoSet() {};
+	CharacterInfoSet() {};
+	~CharacterInfoSet() {};
 
-	unordered_map<int, PlayerInfo> playerInfoMap;
+	unordered_map<int, CharacterInfo> characterInfoMap;
 
-	friend istream& operator>>(istream& stream, PlayerInfoSet& info)
+	friend istream& operator>>(istream& stream, CharacterInfoSet& info)
 	{
-		int playerCount = 0;
-		int playerNumber = 0;
-		PlayerInfo playerInfo{};
-		info.playerInfoMap.clear();
+		int characterCount = 0;
+		int characterNumber = 0;
+		CharacterInfo characterInfo{};
+		info.characterInfoMap.clear();
 
-		stream >> playerCount;
-		for (int i = 0; i < playerCount; i++)
+		stream >> characterCount;
+		for (int i = 0; i < characterCount; i++)
 		{
-			stream >> playerNumber;
-			stream >> playerInfo;
-			info.playerInfoMap[playerNumber] = playerInfo;
+			stream >> characterNumber;
+			stream >> characterInfo;
+			info.characterInfoMap[characterNumber] = characterInfo;
 		}
 		return stream;
 	}
 
-	friend ostream& operator<<(ostream& stream, PlayerInfoSet& info)
+	friend ostream& operator<<(ostream& stream, CharacterInfoSet& info)
 	{
-		stream << info.playerInfoMap.size() << "\n";
-		for (auto& p : info.playerInfoMap)
+		stream << info.characterInfoMap.size() << "\n";
+		for (auto& p : info.characterInfoMap)
 		{
 			stream << p.first << "\n";
 			stream << p.second << "\n";
@@ -80,7 +80,7 @@ public:
 	}
 };
 
-class PlayerInfoSetEx : public PlayerInfoSet
+class PlayerInfoSetEx : public CharacterInfoSet
 {
 public:
 
@@ -94,7 +94,7 @@ public:
 		int playerCount = 0;
 		string playerID = "";
 		int playerNumber = 0;
-		PlayerInfo playerInfo{};
+		CharacterInfo playerInfo{};
 
 		stream >> playerCount;
 		for (int i = 0; i < playerCount; i++)
@@ -103,14 +103,14 @@ public:
 			stream >> playerID;
 			stream >> playerInfo;
 			playerIDMap[playerNumber] = playerID;
-			playerInfoMap[playerNumber] = playerInfo;
+			characterInfoMap[playerNumber] = playerInfo;
 		}
 	}
 
 	void OutputStreamWithID(ostream& stream)
 	{
-		stream << playerInfoMap.size() << "\n";		// 플레이어 수
-		for (auto& p : playerInfoMap)
+		stream << characterInfoMap.size() << "\n";		// 플레이어 수
+		for (auto& p : characterInfoMap)
 		{
 			stream << p.first << "\n";				// 플레이어 번호
 			stream << playerIDMap[p.first] << "\n";	// 플레이어 아이디

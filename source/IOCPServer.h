@@ -38,6 +38,8 @@ protected:
 
 	bool CreateWorkerThreads();
 
+	virtual bool CreateZombieThread() = 0;
+
 	void AccepterThread();
 
 	virtual void HandleDisconnectedClient(SocketInfo* socketInfo) = 0;

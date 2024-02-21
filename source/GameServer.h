@@ -1,6 +1,6 @@
 #pragma once
 #include "IOCPServer.h"
-#include "PlayerInfo.h"
+#include "CharacterInfo.h"
 #include <unordered_map>
 
 using namespace std;
@@ -15,7 +15,13 @@ public:
 
 	virtual bool InitializeServer() override;
 
+	void ZombieThread();
+
 protected:
+
+	virtual bool CreateZombieThread();
+
+	void InitializeZombieInfo();
 
 	virtual void HandleDisconnectedClient(SocketInfo* socketInfo) override;
 
@@ -27,6 +33,10 @@ protected:
 
 	static void SynchronizePlayerInfo(SocketInfo*, stringstream&);
 
+	static void BroadcastPlyerInputAction(SocketInfo*, stringstream&);
+
+	static void Broadcast(stringstream&, const int skipNumber = -1);
+
 private:
 
 	static CRITICAL_SECTION	critsecPlayerInfo;
@@ -34,6 +44,12 @@ private:
 	static unordered_map<int, SocketInfo*> playerSocketMap;
 
 	static PlayerInfoSetEx playerInfoSetEx;
+
+	static CharacterInfoSet zombieInfoSet;
+
+	HANDLE* zombieThread;
+
+	const int maxZombieCount = 3;
 
 	static int playerCount;
 
