@@ -1,6 +1,8 @@
 #pragma once
 #include "IOCPServer.h"
 #include "CharacterInfo.h"
+#include "Zombie/Zombie.h"
+#include "Pathfinder/PathFinder.h"
 #include <unordered_map>
 
 using namespace std;
@@ -45,7 +47,11 @@ private:
 
 	static PlayerInfoSetEx playerInfoSetEx;
 
-	static CharacterInfoSet zombieInfoSet;
+	static unordered_map<int, Zombie> zombieMap;
+
+	static ZombieInfoSet zombieInfoSet;
+
+	Pathfinder pathfinder;
 
 	HANDLE* zombieThread;
 

@@ -1,11 +1,12 @@
 #include "GameServer.h"
 #include <sstream>
 
-CRITICAL_SECTION GameServer::critsecPlayerInfo;
-unordered_map<int, SocketInfo*> GameServer::playerSocketMap;
-PlayerInfoSetEx GameServer::playerInfoSetEx;
-int GameServer::playerCount;
-CharacterInfoSet GameServer::zombieInfoSet;
+CRITICAL_SECTION					GameServer::critsecPlayerInfo;
+unordered_map<int, SocketInfo*>		GameServer::playerSocketMap;
+PlayerInfoSetEx						GameServer::playerInfoSetEx;
+int									GameServer::playerCount;
+ZombieInfoSet					GameServer::zombieInfoSet;
+unordered_map<int, Zombie>			GameServer::zombieMap;
 
 unsigned int WINAPI ZombieThreadStart(LPVOID param)
 {
@@ -38,6 +39,8 @@ bool GameServer::InitializeServer()
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
+	pathfinder.InitializePathFinder();
+
 	return true;
 }
 
@@ -51,7 +54,24 @@ void GameServer::ZombieThread()
 		{
 			stringstream sendStream;
 			sendStream << static_cast<int>(EPacketType::SYNCHZOMBIE) << "\n";
-			sendStream << zombieInfoSet << "\n";
+			sendStream << zombieMap.size() << "\n";
+			for (auto& kv : zombieMap)
+			{
+				kv.second.Update();
+				sendStream << kv.first << "\n";
+				sendStream << kv.second.GetZombieInfo() << "\n";
+				//if (kv.second.GetTargetInfo())
+				//{
+				//	sendStream << 1 << "\n";
+				//	sendStream << kv.second.GetTargetInfo()->location.X << "\n";
+				//	sendStream << kv.second.GetTargetInfo()->location.Y << "\n";
+				//	sendStream << kv.second.GetTargetInfo()->location.Z << "\n";
+				//}
+				//else
+				//{
+				//	sendStream << 0 << "\n";
+				//}
+			}
 
 			EnterCriticalSection(&critsecPlayerInfo);
 			Broadcast(sendStream);
@@ -75,20 +95,27 @@ void GameServer::InitializeZombieInfo()
 {
 	//for (int i = 0; i < maxZombieCount; i++)
 	//{
-	//	zombieInfoSet.characterInfoMap[i] = CharacterInfo();
+	//	
 	//}
 
-	zombieInfoSet.characterInfoMap[0].vectorX = -1000;
-	zombieInfoSet.characterInfoMap[0].vectorY = -1000;
-	zombieInfoSet.characterInfoMap[0].vectorZ = 97;
+	ZombieInfo info;
 
-	zombieInfoSet.characterInfoMap[1].vectorX = -1000;
-	zombieInfoSet.characterInfoMap[1].vectorY = 1000;
-	zombieInfoSet.characterInfoMap[1].vectorZ = 97;
+	info.characterInfo.velocityX = 0;
+	info.characterInfo.velocityY = 0;
+	info.characterInfo.velocityZ = 0;
 
-	zombieInfoSet.characterInfoMap[2].vectorX = 1000;
-	zombieInfoSet.characterInfoMap[2].vectorY = -1000;
-	zombieInfoSet.characterInfoMap[2].vectorZ = 97;
+	info.characterInfo.location.X = 800;
+	info.characterInfo.location.Y = -1000;
+	info.characterInfo.location.Z = 97;
+	info.characterInfo.yaw = 120;
+
+	zombieMap[0].SetZombieInfo(info);
+
+	info.characterInfo.location.X = 1100;
+	info.characterInfo.location.Y = 900;
+	info.characterInfo.yaw = -120;
+
+	//zombieMap[1].SetZombieInfo(info);
 }
 
 void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
@@ -153,14 +180,12 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 	playerInfoSetEx.OutputStreamWithID(sendStream1);
 
 	// 방금 접속한 플레이어의 정보 추가
-	CharacterInfo newPlayerInfo;
-	recvStream >> newPlayerInfo;
-	playerInfoSetEx.characterInfoMap[socketInfo->number] = newPlayerInfo;
+	recvStream >> playerInfoSetEx.characterInfoMap[socketInfo->number];
 
 	// 방금 접속한 플레이어의 정보를 기존 플레이어들에게 보낼 스트림에 저장 
 	PlayerInfoSetEx newPlayerInfoSet;
 	newPlayerInfoSet.playerIDMap[socketInfo->number] = playerInfoSetEx.playerIDMap[socketInfo->number];
-	newPlayerInfoSet.characterInfoMap[socketInfo->number] = newPlayerInfo;
+	newPlayerInfoSet.characterInfoMap[socketInfo->number] = playerInfoSetEx.characterInfoMap[socketInfo->number];
 
 	stringstream sendStream2;
 	sendStream2 << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
@@ -179,6 +204,14 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 	EnterCriticalSection(&critsecPlayerInfo);
 	recvStream >> playerInfoSetEx.characterInfoMap[socketInfo->number];
 	LeaveCriticalSection(&critsecPlayerInfo);
+
+	PlayerInfo* info = &playerInfoSetEx.characterInfoMap[socketInfo->number];
+	// 좀비의 타겟을 이 플레이어로 지정하고 상태 변경 및 이동 시키기
+	for (int number : info->zombiesWhoSawMe)
+	{
+		zombieMap[number].SetTarget(&info->characterInfo);
+		zombieMap[number].ChangeState();
+	}
 
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";
