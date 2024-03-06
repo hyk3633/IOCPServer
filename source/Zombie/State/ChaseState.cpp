@@ -25,17 +25,18 @@ void ChaseState::Update(Zombie* zombie)
 		Vector3D myLocation = zombie->GetZombieLocation();
 		Vector3D TargetLocation = zombie->GetTargetLocation();
 		const float distance = myLocation.GetDistance(TargetLocation);
+		PathManager* pathManager = zombie->GetPathManager();
 
 		if (distance <= 100.f)
 		{
+			pathManager->CorrectZombieLocation();
 			zombie->SetZombieState(AttackState::GetInstance());
 		}
 		else if (distance > 100.f && distance <= 1000.f)
 		{
-			PathManager* pathManager = zombie->GetPathManager();
-			vector<Pos>& path = pathManager->GetPathToTarget();
 			if (pathManager->WhetherRecalculPath())
 			{
+				vector<Pos>& path = pathManager->GetPathToTarget();
 				GetPathfinder()->FindPath(myLocation, TargetLocation, path);
 				if (path.size() == 0) return;
 				pathManager->InitializePathStatus();
@@ -44,6 +45,7 @@ void ChaseState::Update(Zombie* zombie)
 		}
 		else
 		{
+			pathManager->CorrectZombieLocation();
 			zombie->SetZombieState(IdleState::GetInstance());
 		}
 	}

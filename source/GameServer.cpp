@@ -1,5 +1,6 @@
 #include "GameServer.h"
 #include <sstream>
+#include <chrono>
 
 CRITICAL_SECTION					GameServer::critsecPlayerInfo;
 unordered_map<int, SocketInfo*>		GameServer::playerSocketMap;
@@ -50,6 +51,11 @@ void GameServer::ZombieThread()
 
 	while (1)
 	{
+		auto start = std::chrono::high_resolution_clock::now();
+		if (zombieThreadElapsedTime >= zombiePacketSendingInterval)
+		{
+			packetFlag = true;
+		}
 		if (playerSocketMap.size())
 		{
 			stringstream sendStream;
@@ -58,26 +64,27 @@ void GameServer::ZombieThread()
 			for (auto& kv : zombieMap)
 			{
 				kv.second.Update();
-				sendStream << kv.first << "\n";
-				sendStream << kv.second.GetZombieInfo() << "\n";
-				//if (kv.second.GetTargetInfo())
-				//{
-				//	sendStream << 1 << "\n";
-				//	sendStream << kv.second.GetTargetInfo()->location.X << "\n";
-				//	sendStream << kv.second.GetTargetInfo()->location.Y << "\n";
-				//	sendStream << kv.second.GetTargetInfo()->location.Z << "\n";
-				//}
-				//else
-				//{
-				//	sendStream << 0 << "\n";
-				//}
+				if (packetFlag)
+				{
+					sendStream << kv.first << "\n";
+					sendStream << kv.second.GetZombieInfo() << "\n";
+				}
 			}
-
-			EnterCriticalSection(&critsecPlayerInfo);
-			Broadcast(sendStream);
-			LeaveCriticalSection(&critsecPlayerInfo);
+			if (packetFlag)
+			{
+				EnterCriticalSection(&critsecPlayerInfo);
+				Broadcast(sendStream);
+				LeaveCriticalSection(&critsecPlayerInfo);
+				packetFlag = false;
+				zombieThreadElapsedTime = 0;
+			}
 		}
-		Sleep(100);
+		zombieThreadElapsedTime += 0.008f;
+		Sleep(8);
+
+		//auto stop = std::chrono::high_resolution_clock::now();
+		//auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+		//std::cout << "Time taken by function: " << duration.count() << " milliseconds" << std::endl;
 	}
 }
 
@@ -209,6 +216,7 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 	// 좀비의 타겟을 이 플레이어로 지정하고 상태 변경 및 이동 시키기
 	for (int number : info->zombiesWhoSawMe)
 	{
+		zombieMap[number].SetTargetNumber(socketInfo->number);
 		zombieMap[number].SetTarget(&info->characterInfo);
 		zombieMap[number].ChangeState();
 	}

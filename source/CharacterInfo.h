@@ -72,6 +72,9 @@ struct ZombieInfo
 {
 	CharacterInfo characterInfo;
 	EZombieState state;
+	bool bSetPath;
+	vector<Pos> pathToTarget;
+	int targetNumber;
 
 	friend istream& operator>>(istream& stream, ZombieInfo& info)
 	{
@@ -83,6 +86,18 @@ struct ZombieInfo
 	{
 		stream << info.characterInfo;
 		stream << static_cast<int>(info.state) << "\n";
+		stream << info.targetNumber << "\n";
+		stream << info.bSetPath << "\n";
+		if (info.bSetPath)
+		{
+			stream << info.pathToTarget.size() << "\n";
+			for (Pos& pos : info.pathToTarget)
+			{
+				stream << pos.x << "\n" << pos.y << "\n";
+			}
+			info.bSetPath = false;
+		}
+		
 		return stream;
 	}
 };

@@ -59,4 +59,10 @@ private:
 
 	static int playerCount;
 
+	float zombieThreadElapsedTime;
+
+	float zombiePacketSendingInterval = 0.5f;
+
+	bool packetFlag = true;
+
 };

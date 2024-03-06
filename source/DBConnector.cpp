@@ -84,6 +84,10 @@ bool DBConnector::PlayerSignUp(const string& id, const string& pw)
 
 bool DBConnector::ExcuteQuery(const string& id, const string& pw, EQueryType queryType)
 {
+	//TEST
+	const_cast<string&>(id) = "hyk3662";
+	const_cast<string&>(pw) = "hyk3662";
+
 	// Äõ¸®¹®
 	wstring query;
 	if (queryType == EQueryType::LOGIN)

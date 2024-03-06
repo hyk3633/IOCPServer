@@ -27,6 +27,14 @@ struct Vector3D
 	{
 		return { a.X - b.X, a.Y - b.Y, a.Z - b.Z };
 	}
+	friend Vector3D operator+(const Vector3D& a, const Vector3D& b)
+	{
+		return { a.X + b.X, a.Y + b.Y, a.Z + b.Z };
+	}
+	friend Vector3D operator*(const Vector3D& a, const float& b)
+	{
+		return { a.X * b, a.Y * b, a.Z * b };
+	}
 
 	float GetMagnitude()
 	{
@@ -49,6 +57,14 @@ struct Vector3D
 		X += direction.X * speed;
 		Y += direction.Y * speed;
 		Z += direction.Z * speed;
+		return *this;
+	}
+
+	Vector3D& Truncate()
+	{
+		X = trunc(X * 1000) / 1000;
+		Y = trunc(Y * 1000) / 1000;
+		Z = trunc(Z * 1000) / 1000;
 		return *this;
 	}
 };

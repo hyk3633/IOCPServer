@@ -30,13 +30,15 @@ public:
 
 	/* path manager에서 호출하는 함수 */
 
-	void AddMovement(const Vector3D direction);
+	void AddMovement(const Vector3D& direction, const Vector3D& dest);
 
 	/* getter, setter */
 
 	inline void SetZombieInfo(const ZombieInfo& info) { zombieInfo = info; }
 
 	inline ZombieInfo& GetZombieInfo() { return zombieInfo; }
+
+	inline void SetZombieLocation(const Vector3D& location) { zombieInfo.characterInfo.location = location; }
 
 	inline Vector3D GetZombieLocation() { return zombieInfo.characterInfo.location; }
 
@@ -50,6 +52,12 @@ public:
 
 	inline EZombieState GetStateEnum() const { return zombieInfo.state; }
 
+	void SetSpeed(const Vector3D& dest);
+
+	void SetPath(const vector<Pos>& path);
+
+	inline void SetTargetNumber(const int number) { zombieInfo.targetNumber = number; }
+
 private:
 
 	ZombieState* zombieState;
@@ -60,6 +68,6 @@ private:
 
 	CharacterInfo* targetInfo;
 
-	float speed = 40.f;
+	float speed = 50.f;
 
 };
