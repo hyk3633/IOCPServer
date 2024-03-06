@@ -34,29 +34,25 @@ public:
 
 	/* getter, setter */
 
+	inline PathManager* GetPathManager() { return pathManager.get(); }
+
 	inline void SetZombieInfo(const ZombieInfo& info) { zombieInfo = info; }
 
 	inline ZombieInfo& GetZombieInfo() { return zombieInfo; }
 
-	inline void SetZombieLocation(const Vector3D& location) { zombieInfo.characterInfo.location = location; }
+	inline void SetZombieLocation(const Vector3D& location) { zombieInfo.location = location; }
 
-	inline Vector3D GetZombieLocation() { return zombieInfo.characterInfo.location; }
-
-	inline PathManager* GetPathManager() { return pathManager.get(); }
+	inline Vector3D GetZombieLocation() { return zombieInfo.location; }
 	
 	inline void SetTarget(CharacterInfo* info) { targetInfo = info; }
 
-	inline Vector3D GetTargetLocation() { return targetInfo->location; }
+	inline void SetTargetNumber(const int number) { zombieInfo.targetNumber = number; }
 
-	inline float GetSpeed() const { return speed; }
+	inline Vector3D GetTargetLocation() { return targetInfo->location; }
 
 	inline EZombieState GetStateEnum() const { return zombieInfo.state; }
 
-	void SetSpeed(const Vector3D& dest);
-
 	void SetPath(const vector<Pos>& path);
-
-	inline void SetTargetNumber(const int number) { zombieInfo.targetNumber = number; }
 
 private:
 
@@ -68,6 +64,8 @@ private:
 
 	CharacterInfo* targetInfo;
 
-	float speed = 50.f;
+	float speed = 100.f;
+
+	float interval = 0.016f;
 
 };

@@ -17,8 +17,6 @@ void PathManager::InitializePathStatus()
 	pathIdx = 0;
 	nextPoint = Vector3D(pathToTarget[1].x, pathToTarget[1].y, zombie->GetZombieLocation().Z);
 	nextDirection = (nextPoint - zombie->GetZombieLocation()).Normalize();
-	cout << "loc : " << nextPoint.X << " " << nextPoint.Y << " " << nextPoint.Z << "\n";
-	zombie->SetSpeed(nextPoint);
 }
 
 void PathManager::FollowPath()
@@ -30,7 +28,6 @@ void PathManager::FollowPath()
 		{
 			nextPoint = Vector3D(pathToTarget[pathIdx].x, pathToTarget[pathIdx].y, zombie->GetZombieLocation().Z);
 			nextDirection = (nextPoint - zombie->GetZombieLocation()).Normalize();
-			zombie->SetSpeed(nextPoint);
 			pathIdx++;
 		}
 	}
@@ -54,10 +51,4 @@ bool PathManager::WhetherRecalculPath()
 		}
 	}
 	return false;
-}
-
-void PathManager::CorrectZombieLocation()
-{
-	const Vector3D correctedLocation = zombie->GetZombieLocation() + (nextPoint - zombie->GetZombieLocation()) * elapsedTime;
-	zombie->SetZombieLocation(correctedLocation);
 }

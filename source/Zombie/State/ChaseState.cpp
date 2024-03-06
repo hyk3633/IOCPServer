@@ -29,23 +29,24 @@ void ChaseState::Update(Zombie* zombie)
 
 		if (distance <= 100.f)
 		{
-			pathManager->CorrectZombieLocation();
 			zombie->SetZombieState(AttackState::GetInstance());
 		}
-		else if (distance > 100.f && distance <= 1000.f)
+		else if (distance > 100.f && distance <= 1200.f)
 		{
 			if (pathManager->WhetherRecalculPath())
 			{
 				vector<Pos>& path = pathManager->GetPathToTarget();
 				GetPathfinder()->FindPath(myLocation, TargetLocation, path);
-				if (path.size() == 0) return;
+				if (path.size() < 2)
+				{
+					zombie->SetZombieState(AttackState::GetInstance());
+				}
 				pathManager->InitializePathStatus();
 			}
 			pathManager->FollowPath();
 		}
 		else
 		{
-			pathManager->CorrectZombieLocation();
 			zombie->SetZombieState(IdleState::GetInstance());
 		}
 	}

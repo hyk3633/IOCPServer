@@ -20,8 +20,6 @@ public:
 
 	bool WhetherRecalculPath();
 
-	void CorrectZombieLocation();
-
 	inline void SetZombie(Zombie* newZombie) { zombie = newZombie; }
 
 	inline vector<Pos>& GetPathToTarget() { return pathToTarget; }
@@ -37,9 +35,5 @@ private:
 	Vector3D nextPoint;
 
 	Vector3D nextDirection;
-
-	float estimatedTime = 1.5f;
-
-	float elapsedTime;
 
 };

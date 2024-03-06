@@ -61,7 +61,7 @@ private:
 
 	float zombieThreadElapsedTime;
 
-	float zombiePacketSendingInterval = 0.5f;
+	float zombiePacketSendingInterval = 0.1f;
 
 	bool packetFlag = true;
 

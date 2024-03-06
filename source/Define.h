@@ -1,5 +1,9 @@
 #pragma once
 
+#include <sstream>
+
+using namespace std;
+
 #define SERVER_PORT 9999
 #define PACKET_SIZE 4096
 #define GRID_DIST 50
@@ -22,6 +26,18 @@ struct Vector3D
 
 	Vector3D() : X(0), Y(0), Z(0) {}
 	Vector3D(float x, float y, float z) : X(x), Y(y), Z(z) {}
+
+	friend istream& operator>>(istream& stream, Vector3D& loc)
+	{
+		stream >> loc.X >> loc.Y >> loc.Z;
+		return stream;
+	}
+
+	friend ostream& operator<<(ostream& stream, Vector3D& loc)
+	{
+		stream << loc.X << "\n" << loc.Y << "\n" << loc.Z << "\n";
+		return stream;
+	}
 
 	friend Vector3D operator-(const Vector3D& a, const Vector3D& b)
 	{
@@ -66,6 +82,26 @@ struct Vector3D
 		Y = trunc(Y * 1000) / 1000;
 		Z = trunc(Z * 1000) / 1000;
 		return *this;
+	}
+};
+
+struct Rotator
+{
+	float pitch, yaw, roll;
+
+	Rotator() : pitch(0), yaw(0), roll(0) {}
+	Rotator(float p, float y, float r) : pitch(p), yaw(y), roll(r) {}
+
+	friend istream& operator>>(istream& stream, Rotator& rot)
+	{
+		stream >> rot.pitch >> rot.yaw >> rot.roll;
+		return stream;
+	}
+
+	friend ostream& operator<<(ostream& stream, Rotator& rot)
+	{
+		stream << rot.pitch << "\n" << rot.yaw << "\n" << rot.roll << "\n";
+		return stream;
 	}
 };
 

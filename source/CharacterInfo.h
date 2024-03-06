@@ -8,83 +8,25 @@
 
 using namespace std;
 
-struct CharacterInfo
-{
-	Vector3D location;
-	float velocityX, velocityY, velocityZ;
-	float pitch, yaw, roll;
-	
-	CharacterInfo& operator=(const CharacterInfo& info)
-	{
-		location = info.location;
-		velocityX = info.velocityX;
-		velocityY = info.velocityY;
-		velocityZ = info.velocityZ;
-		pitch = info.pitch;
-		yaw = info.yaw;
-		roll = info.roll;
-		return *this;
-	}
-
-	friend istream& operator>>(istream& stream, CharacterInfo& info)
-	{
-		stream >> info.location.X >> info.location.Y >> info.location.Z;
-		stream >> info.velocityX >> info.velocityY >> info.velocityZ;
-		stream >> info.pitch >> info.yaw >> info.roll;
-		return stream;
-	}
-
-	friend ostream& operator<<(ostream& stream, CharacterInfo& info)
-	{
-		stream << info.location.X << "\n" << info.location.Y << "\n" << info.location.Z << "\n";
-		stream << info.velocityX << "\n" << info.velocityY << "\n" << info.velocityZ << "\n";
-		stream << info.pitch << "\n" << info.yaw << "\n" << info.roll << "\n";
-		return stream;
-	}
-};
-
-struct PlayerInfo
-{
-	CharacterInfo characterInfo;
-	bool isZombiesSawMe;
-	vector<int> zombiesWhoSawMe;
-
-	friend istream& operator>>(istream& stream, PlayerInfo& info)
-	{
-		stream >> info.characterInfo;
-		stream >> info.isZombiesSawMe;
-		info.zombiesWhoSawMe.clear();
-		if (info.isZombiesSawMe)
-		{
-			int vectorSize = 0, number = -1;
-			stream >> vectorSize;
-			for (int i = 0; i < vectorSize; i++)
-			{
-				stream >> number;
-				info.zombiesWhoSawMe.push_back(number);
-			}
-		}
-		return stream;
-	}
-};
-
 struct ZombieInfo
 {
-	CharacterInfo characterInfo;
-	EZombieState state;
+	Vector3D location;
+	Rotator rotation;
+	EZombieState state = EZombieState::IDLE;
+	int targetNumber;
 	bool bSetPath;
 	vector<Pos> pathToTarget;
-	int targetNumber;
 
 	friend istream& operator>>(istream& stream, ZombieInfo& info)
 	{
-		stream >> info.characterInfo;
+		stream >> info.location;
 		return stream;
 	}
 
 	friend ostream& operator<<(ostream& stream, ZombieInfo& info)
 	{
-		stream << info.characterInfo;
+		stream << info.location;
+		stream << info.rotation;
 		stream << static_cast<int>(info.state) << "\n";
 		stream << info.targetNumber << "\n";
 		stream << info.bSetPath << "\n";
@@ -133,6 +75,62 @@ public:
 		{
 			stream << p.first << "\n";
 			stream << p.second << "\n";
+		}
+		return stream;
+	}
+};
+
+struct CharacterInfo
+{
+	Vector3D location;
+	Vector3D velocity;
+	Rotator rotation;;
+
+	CharacterInfo& operator=(const CharacterInfo& info)
+	{
+		location = info.location;
+		velocity = info.velocity;
+		rotation = info.rotation;
+		return *this;
+	}
+
+	friend istream& operator>>(istream& stream, CharacterInfo& info)
+	{
+		stream >> info.location;
+		stream >> info.velocity;
+		stream >> info.rotation;
+		return stream;
+	}
+
+	friend ostream& operator<<(ostream& stream, CharacterInfo& info)
+	{
+		stream << info.location;
+		stream << info.velocity;
+		stream << info.rotation;
+		return stream;
+	}
+};
+
+struct PlayerInfo
+{
+	CharacterInfo characterInfo;
+	bool isZombiesSawMe;
+	vector<int> zombiesWhoSawMe;
+
+	friend istream& operator>>(istream& stream, PlayerInfo& info)
+	{
+		stream >> info.characterInfo;
+		stream >> info.isZombiesSawMe;
+		info.zombiesWhoSawMe.clear();
+		if (info.isZombiesSawMe)
+		{
+			int vectorSize = 0, number = -1;
+			stream >> vectorSize;
+			for (int i = 0; i < vectorSize; i++)
+			{
+				stream >> number;
+				info.zombiesWhoSawMe.push_back(number);
+			}
 		}
 		return stream;
 	}

@@ -51,7 +51,6 @@ void GameServer::ZombieThread()
 
 	while (1)
 	{
-		auto start = std::chrono::high_resolution_clock::now();
 		if (zombieThreadElapsedTime >= zombiePacketSendingInterval)
 		{
 			packetFlag = true;
@@ -81,10 +80,6 @@ void GameServer::ZombieThread()
 		}
 		zombieThreadElapsedTime += 0.008f;
 		Sleep(8);
-
-		//auto stop = std::chrono::high_resolution_clock::now();
-		//auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-		//std::cout << "Time taken by function: " << duration.count() << " milliseconds" << std::endl;
 	}
 }
 
@@ -107,20 +102,16 @@ void GameServer::InitializeZombieInfo()
 
 	ZombieInfo info;
 
-	info.characterInfo.velocityX = 0;
-	info.characterInfo.velocityY = 0;
-	info.characterInfo.velocityZ = 0;
-
-	info.characterInfo.location.X = 800;
-	info.characterInfo.location.Y = -1000;
-	info.characterInfo.location.Z = 97;
-	info.characterInfo.yaw = 120;
+	info.location.X = 800;
+	info.location.Y = -1000;
+	info.location.Z = 97;
+	info.rotation.yaw = 120;
 
 	zombieMap[0].SetZombieInfo(info);
 
-	info.characterInfo.location.X = 1100;
-	info.characterInfo.location.Y = 900;
-	info.characterInfo.yaw = -120;
+	info.location.X = 1100;
+	info.location.Y = 900;
+	info.rotation.yaw = -120;
 
 	//zombieMap[1].SetZombieInfo(info);
 }

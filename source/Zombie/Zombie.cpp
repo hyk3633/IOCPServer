@@ -3,7 +3,6 @@
 
 Zombie::Zombie() : zombieState(IdleState::GetInstance()), targetInfo(nullptr)
 {
-	zombieInfo.state = EZombieState::IDLE;
 	pathManager = make_unique<PathManager>();
 	pathManager->SetZombie(this);
 }
@@ -32,33 +31,18 @@ bool Zombie::IsTargetSetted()
 
 void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
 {
-	Vector3D& location = zombieInfo.characterInfo.location;
-	const float maxStep = speed * 0.016f;
+	Vector3D& location = zombieInfo.location;
+	const float maxStep = speed * interval;
 	if ((dest - location).GetMagnitude() > maxStep)
 	{
-		location = location + (direction * speed * 0.016f);
+		location = location + (direction * speed * interval);
 	}
 	else
 	{
 		location = dest;
 	}
 	location.Truncate();
-
-	//zombieInfo.characterInfo.location.X += (direction.X * speed * 0.05f);
-	//zombieInfo.characterInfo.location.Y += (direction.Y * speed * 0.05f);
-	//zombieInfo.characterInfo.location.Z += (direction.Z * speed * 0.05f);
-	
-	//zombieInfo.characterInfo.velocityX = direction.X;
-	//zombieInfo.characterInfo.velocityY = direction.Y;
-	//zombieInfo.characterInfo.velocityZ = direction.Z;
-
-	cout << zombieInfo.characterInfo.location.X << " " << zombieInfo.characterInfo.location.Y << " " << zombieInfo.characterInfo.location.Z << "\n";
-}
-
-void Zombie::SetSpeed(const Vector3D& dest)
-{
-	speed = GetZombieLocation().GetDistance(dest) / 1.5f;
-	speed = 100.f;
+	cout << location.X << " " << location.Y << " " << location.Z << "\n";
 }
 
 void Zombie::SetPath(const vector<Pos>& path)
