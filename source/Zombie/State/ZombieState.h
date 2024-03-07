@@ -1,6 +1,4 @@
 #pragma once
-#include "../../Pathfinder/PathFinder.h"
-
 using namespace std;
 
 class Zombie;
@@ -30,13 +28,5 @@ public:
 	virtual void Update(Zombie* zombie) = 0;
 
 	virtual EZombieState GetStateEnum() = 0;
-
-protected:
-
-	static Pathfinder* GetPathfinder()
-	{
-		static Pathfinder pathfinder;
-		return &pathfinder;
-	}
 
 };

@@ -2,6 +2,7 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <math.h>
 
 using namespace std;
 
@@ -27,9 +28,10 @@ void Pathfinder::InitializePathFinder()
 	}
 }
 
-void Pathfinder::FindPath(const Vector3D& start, const Vector3D& dest, vector<Pos>& path)
+void Pathfinder::FindPath(const Vector3D& start, const Vector3D& dest, vector<Pos>& path, vector<Pos>& pathIndexArr)
 {
 	path.clear();
+	pathIndexArr.clear();
 
 	const int dy = VectorToCoordinatesY(dest.Y);
 	const int dx = VectorToCoordinatesX(dest.X);
@@ -86,8 +88,7 @@ void Pathfinder::FindPath(const Vector3D& start, const Vector3D& dest, vector<Po
 				continue;
 
 			const int heightCost = floor(grids[node.pos.y][node.pos.x].height - grids[nextPos.y][nextPos.x].height + 0.5f) * (isGoingUp ? costWeight : -costWeight);
-			// zombiePathCost 초기화 및 g에 점수 합산
-			const int g = node.g + cost[dir] + grids[nextPos.y][nextPos.x].extraCost + heightCost;
+			const int g = node.g + cost[dir] + grids[nextPos.y][nextPos.x].extraCost + grids[nextPos.y][nextPos.x].pathCost + heightCost;
 			const int h = (abs(dy - nextPos.y) + abs(dx - nextPos.x)) * 10;
 			if (best[nextPos.y][nextPos.x] <= g + h)
 				continue;
@@ -109,12 +110,37 @@ void Pathfinder::FindPath(const Vector3D& start, const Vector3D& dest, vector<Po
 	while (nextPos != parent[nextPos])
 	{
 		path.push_back(grids[nextPos.y][nextPos.x].pos);
-		//gridIndexArr.push_back({nextPos.y, nextPos.x});
-		//zombiePathCost[nextPos.y][nextPos.x] += 140;
+		pathIndexArr.push_back({nextPos.y, nextPos.x});
+		grids[nextPos.y][nextPos.x].pathCost += HW;
 		nextPos = parent[nextPos];
 	}
 
 	reverse(path.begin(), path.end());
+}
+
+void Pathfinder::SetGridPassability(const Pos& pos, const bool isPassable)
+{
+	const int y = VectorToCoordinatesY(pos.y);
+	const int x = VectorToCoordinatesX(pos.x);
+
+	grids[y][x].pathCost = max(grids[y][x].pathCost + (isPassable ? -HW : HW), 0);
+	Pos newPos, currentPos{ y,x };
+	for (int Idx = 0; Idx < 8; Idx++)
+	{
+		newPos = currentPos + front[Idx];
+		if (CanGo(newPos.y, newPos.x))
+		{
+			grids[y][x].pathCost = max(grids[newPos.y][newPos.x].pathCost + (isPassable ? -HW : HW), 0);
+		}
+	}
+}
+
+void Pathfinder::ClearPathCost(const vector<Pos>& pathIndexArr)
+{
+	for (const Pos& pos : pathIndexArr)
+	{
+		grids[pos.y][pos.x].pathCost = max(grids[pos.y][pos.x].pathCost - HW, 0);
+	}
 }
 
 bool Pathfinder::CanGo(const int y, const int x)

@@ -1,5 +1,6 @@
 #include "Zombie.h"
 #include "State/IdleState.h"
+#include <iostream>
 
 Zombie::Zombie() : zombieState(IdleState::GetInstance()), targetInfo(nullptr)
 {
@@ -29,6 +30,11 @@ bool Zombie::IsTargetSetted()
 	else return false;
 }
 
+void Zombie::ProcessMovement()
+{
+	pathManager->ProcessMovement();
+}
+
 void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
 {
 	Vector3D& location = zombieInfo.location;
@@ -42,7 +48,7 @@ void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
 		location = dest;
 	}
 	location.Truncate();
-	cout << location.X << " " << location.Y << " " << location.Z << "\n";
+	std::cout << location.X << " " << location.Y << " " << location.Z << "\n";
 }
 
 void Zombie::SetPath(const vector<Pos>& path)

@@ -28,6 +28,8 @@ public:
 
 	bool IsTargetSetted();
 
+	void ProcessMovement();
+
 	/* path manager에서 호출하는 함수 */
 
 	void AddMovement(const Vector3D& direction, const Vector3D& dest);

@@ -14,11 +14,19 @@ public:
 
 	~PathManager();
 
+	void ProcessMovement();
+
+protected:
+
 	void InitializePathStatus();
 
 	void FollowPath();
 
 	bool WhetherRecalculPath();
+
+	void ClearPathStatus();
+
+public:
 
 	inline void SetZombie(Zombie* newZombie) { zombie = newZombie; }
 
@@ -29,6 +37,8 @@ private:
 	Zombie* zombie;
 
 	vector<Pos> pathToTarget;
+
+	vector<Pos> pathIndexArr;
 
 	int pathIdx;
 

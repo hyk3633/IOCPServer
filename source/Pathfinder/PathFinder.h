@@ -8,12 +8,19 @@
 
 using namespace std;
 
+#define NW normalWeight
+#define HW heavyWeight
+
+const int normalWeight = 30;
+const int heavyWeight = 42;
+
 struct GridInfo
 {
 	Pos pos;
 	float height;
 	bool isPassable;
 	int extraCost;
+	int pathCost = 0;
 
 	friend ifstream& operator>>(ifstream& stream, GridInfo& grid)
 	{
@@ -41,9 +48,19 @@ public:
 	Pathfinder();
 	~Pathfinder() = default;
 
+	static Pathfinder* GetPathfinder()
+	{
+		static Pathfinder pathfinder;
+		return &pathfinder;
+	}
+
 	void InitializePathFinder();
 
-	void FindPath(const Vector3D& start, const Vector3D& dest, vector<Pos>& path);
+	void FindPath(const Vector3D& start, const Vector3D& dest, vector<Pos>& path, vector<Pos>& pathIndexArr);
+
+	void SetGridPassability(const Pos& pos, const bool isPassable);
+
+	void ClearPathCost(const vector<Pos>& pathIndexArr);
 
 protected:
 
@@ -80,5 +97,5 @@ private:
 		Pos {-1, 1}
 	};
 
-	int cost[8] = { 30,30,30,30,42,42,42,42 };
+	int cost[8] = { NW,NW,NW,NW,HW,HW,HW,HW };
 };

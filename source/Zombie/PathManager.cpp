@@ -1,5 +1,7 @@
 #include "PathManager.h"
 #include "Zombie.h"
+#include "State/ZombieState.h"
+#include "../Pathfinder/PathFinder.h"
 
 PathManager::PathManager()
 {
@@ -11,10 +13,22 @@ PathManager::~PathManager()
 
 }
 
+void PathManager::ProcessMovement()
+{
+	if (WhetherRecalculPath())
+	{
+		Pathfinder::GetPathfinder()->ClearPathCost(pathIndexArr);
+		Pathfinder::GetPathfinder()->FindPath(zombie->GetZombieLocation(), zombie->GetTargetLocation(), pathToTarget, pathIndexArr);
+		InitializePathStatus();
+	}
+	FollowPath();
+}
+
 void PathManager::InitializePathStatus()
 {
-	zombie->SetPath(pathToTarget);
 	pathIdx = 0;
+	zombie->SetPath(pathToTarget);
+	Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx], false);
 	nextPoint = Vector3D(pathToTarget[1].x, pathToTarget[1].y, zombie->GetZombieLocation().Z);
 	nextDirection = (nextPoint - zombie->GetZombieLocation()).Normalize();
 }
@@ -26,9 +40,12 @@ void PathManager::FollowPath()
 	{
 		if (pathIdx < pathToTarget.size())
 		{
+			if(pathIdx > 0) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx - 1], true);
+			Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx + 1], false);
+
+			pathIdx++;
 			nextPoint = Vector3D(pathToTarget[pathIdx].x, pathToTarget[pathIdx].y, zombie->GetZombieLocation().Z);
 			nextDirection = (nextPoint - zombie->GetZombieLocation()).Normalize();
-			pathIdx++;
 		}
 	}
 	zombie->AddMovement(nextDirection, nextPoint);
@@ -51,4 +68,9 @@ bool PathManager::WhetherRecalculPath()
 		}
 	}
 	return false;
+}
+
+void PathManager::ClearPathStatus()
+{
+
 }
