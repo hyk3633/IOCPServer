@@ -54,7 +54,7 @@ public:
 
 	inline EZombieState GetStateEnum() const { return zombieInfo.state; }
 
-	void SetPath(const vector<Pos>& path);
+	inline void SetNextGrid(const Vector3D& nextLocation) { zombieInfo.nextLocation = nextLocation; }
 
 private:
 

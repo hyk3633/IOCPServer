@@ -27,10 +27,10 @@ void PathManager::ProcessMovement()
 void PathManager::InitializePathStatus()
 {
 	pathIdx = 0;
-	zombie->SetPath(pathToTarget);
 	Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx], false);
 	nextPoint = Vector3D(pathToTarget[1].x, pathToTarget[1].y, zombie->GetZombieLocation().Z);
 	nextDirection = (nextPoint - zombie->GetZombieLocation()).Normalize();
+	zombie->SetNextGrid(nextPoint);
 }
 
 void PathManager::FollowPath()
@@ -46,6 +46,7 @@ void PathManager::FollowPath()
 			pathIdx++;
 			nextPoint = Vector3D(pathToTarget[pathIdx].x, pathToTarget[pathIdx].y, zombie->GetZombieLocation().Z);
 			nextDirection = (nextPoint - zombie->GetZombieLocation()).Normalize();
+			zombie->SetNextGrid(nextPoint);
 		}
 	}
 	zombie->AddMovement(nextDirection, nextPoint);

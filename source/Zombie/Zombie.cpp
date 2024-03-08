@@ -48,11 +48,4 @@ void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
 		location = dest;
 	}
 	location.Truncate();
-	std::cout << location.X << " " << location.Y << " " << location.Z << "\n";
-}
-
-void Zombie::SetPath(const vector<Pos>& path)
-{
-	zombieInfo.pathToTarget = path;
-	zombieInfo.bSetPath = true;
 }
