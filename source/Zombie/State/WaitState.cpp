@@ -7,16 +7,32 @@
 
 void WaitState::ChangeState(Zombie* zombie)
 {
-	//zombie->SetZombieState(IdleState::GetInstance());
-	//zombie->SetZombieState(PatrolState::GetInstance());
-	//zombie->SetZombieState(ChaseState::GetInstance());
-	//zombie->SetZombieState(AttackState::GetInstance());
-	//zombie->SetZombieState(GrabState::GetInstance());
+	const float distance = zombie->GetZombieLocation().GetDistance(zombie->GetTargetLocation());
+	if (distance <= 100.f)
+	{
+		// 플레이어가 wrestle 상태면 wait
+		//zombie.SetZombieState(WaitState::GetInstance());
+		
+		zombie->SetZombieState(AttackState::GetInstance());
+
+		//zombie->SetZombieState(GrabState::GetInstance());
+	}
+	else if (distance > 100.f && distance <= 1200.f)
+	{
+		zombie->SetZombieState(ChaseState::GetInstance());
+	}
+	else
+	{
+		zombie->SetZombieState(IdleState::GetInstance());
+	}
 }
 
 void WaitState::Update(Zombie* zombie)
 {
-
+	if (zombie->Waiting())
+	{
+		zombie->ChangeState();
+	}
 }
 
 EZombieState WaitState::GetStateEnum()

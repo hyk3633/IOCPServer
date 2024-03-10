@@ -49,3 +49,14 @@ void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
 	}
 	location.Truncate();
 }
+
+bool Zombie::Waiting()
+{
+	elapsedWaitingTime += 0.008f;
+	if (elapsedWaitingTime >= waitingTime)
+	{
+		elapsedWaitingTime = 0.f;
+		return true;
+	}
+	return false;
+}

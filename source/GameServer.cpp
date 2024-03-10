@@ -212,6 +212,19 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 		zombieMap[number].ChangeState();
 	}
 
+	if (info->infoBitMask & (1 << 2))
+	{
+		if (info->isHitted)
+		{
+			cout << socketInfo->number << " 가 좀비" << info->zombieNumberAttackedMe << " 에게 맞았습니다.\n";
+		}
+		else
+		{
+			cout << socketInfo->number << " 는 좀비가 때렸지만 맞지 않았습니다.\n";
+		}
+		zombieMap[info->zombieNumberAttackedMe].ChangeState();
+	}
+
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";
 	sendStream << playerInfoSetEx << "\n";

@@ -7,14 +7,22 @@
 
 void ChaseState::ChangeState(Zombie* zombie)
 {
-	// 플레이어가 wrestle 상태면 wait
-	//zombie.SetZombieState(WaitState::GetInstance());
+	const float distance = zombie->GetZombieLocation().GetDistance(zombie->GetTargetLocation());
 
-	// 플레이어가 wait 상태면 attack
-	zombie->SetZombieState(AttackState::GetInstance());
+	if (distance <= 100.f)
+	{
+		zombie->SetZombieState(AttackState::GetInstance());
 
-	// 플레이어가 위 두 상태가 아니면 grab
-	//zombie.SetZombieState(GrabState::GetInstance());
+		// 플레이어가 wrestle 상태면 wait
+		//zombie.SetZombieState(WaitState::GetInstance());
+
+		// 플레이어가 위 두 상태가 아니면 grab
+		//zombie.SetZombieState(GrabState::GetInstance());
+	}
+	else
+	{
+		zombie->SetZombieState(IdleState::GetInstance());
+	}
 }
 
 void ChaseState::Update(Zombie* zombie)
@@ -26,6 +34,9 @@ void ChaseState::Update(Zombie* zombie)
 		if (distance <= 100.f)
 		{
 			zombie->SetZombieState(AttackState::GetInstance());
+
+			// 플레이어가 wrestle 상태면 wait
+			// 플레이어가 위 두 상태가 아니면 grab
 		}
 		else if (distance > 100.f && distance <= 1200.f)
 		{

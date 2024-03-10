@@ -103,12 +103,19 @@ struct CharacterInfo
 struct PlayerInfo
 {
 	CharacterInfo characterInfo;
+	int infoBitMask;
 	bool isZombiesSawMe;
 	vector<int> zombiesWhoSawMe;
+	bool isHitted;
+	int zombieNumberAttackedMe;
+	bool isWrestling;
 
 	friend istream& operator>>(istream& stream, PlayerInfo& info)
 	{
 		stream >> info.characterInfo;
+
+		stream >> info.infoBitMask;
+
 		stream >> info.isZombiesSawMe;
 		info.zombiesWhoSawMe.clear();
 		if (info.isZombiesSawMe)
@@ -120,6 +127,11 @@ struct PlayerInfo
 				stream >> number;
 				info.zombiesWhoSawMe.push_back(number);
 			}
+		}
+		if (info.infoBitMask & (1 << 2))
+		{
+			stream >> info.isHitted;
+			stream >> info.zombieNumberAttackedMe;
 		}
 		return stream;
 	}

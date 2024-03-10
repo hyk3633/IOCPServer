@@ -56,6 +56,8 @@ public:
 
 	inline void SetNextGrid(const Vector3D& nextLocation) { zombieInfo.nextLocation = nextLocation; }
 
+	bool Waiting();
+
 private:
 
 	ZombieState* zombieState;
@@ -69,5 +71,9 @@ private:
 	float speed = 100.f;
 
 	float interval = 0.016f;
+
+	float waitingTime = 1.5f;
+
+	float elapsedWaitingTime = 0.f;
 
 };
