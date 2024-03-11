@@ -5,7 +5,7 @@
 #include <cmath>
 #include "Define.h"
 #include "Zombie/State/ZombieState.h"
-
+#include <iostream>
 using namespace std;
 
 struct ZombieInfo
@@ -100,15 +100,30 @@ struct CharacterInfo
 	}
 };
 
+enum class EWrestleState
+{
+	ABLE,
+	WRESTLING,
+	WAITING
+};
+
 struct PlayerInfo
 {
 	CharacterInfo characterInfo;
+
 	int infoBitMask;
+
 	bool isZombiesSawMe;
 	vector<int> zombiesWhoSawMe;
+
 	bool isHitted;
 	int zombieNumberAttackedMe;
-	bool isWrestling;
+
+	int sendInfoBitMask;
+
+	EWrestleState wrestleState = EWrestleState::ABLE;
+	float wrestleWaitTime = 5.f;
+	float wrestleWaitElapsedTime = 0.f;
 
 	friend istream& operator>>(istream& stream, PlayerInfo& info)
 	{
@@ -168,6 +183,12 @@ public:
 		{
 			stream << p.first << "\n";
 			stream << p.second.characterInfo << "\n";
+			stream << p.second.sendInfoBitMask << "\n";
+			if (p.second.sendInfoBitMask & (1 << 3))
+			{
+				stream << static_cast<int>(p.second.wrestleState) << "\n";
+				p.second.sendInfoBitMask &= ~(1 << 3);
+			}
 		}
 		return stream;
 	}

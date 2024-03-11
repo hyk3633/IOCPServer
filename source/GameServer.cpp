@@ -199,16 +199,16 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 
 void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& recvStream)
 {
-	EnterCriticalSection(&critsecPlayerInfo);
+	//EnterCriticalSection(&critsecPlayerInfo);
 	recvStream >> playerInfoSetEx.characterInfoMap[socketInfo->number];
-	LeaveCriticalSection(&critsecPlayerInfo);
+	//LeaveCriticalSection(&critsecPlayerInfo);
 
 	PlayerInfo* info = &playerInfoSetEx.characterInfoMap[socketInfo->number];
 	// 좀비의 타겟을 이 플레이어로 지정하고 상태 변경 및 이동 시키기
 	for (int number : info->zombiesWhoSawMe)
 	{
 		zombieMap[number].SetTargetNumber(socketInfo->number);
-		zombieMap[number].SetTarget(&info->characterInfo);
+		zombieMap[number].SetTarget(info);
 		zombieMap[number].ChangeState();
 	}
 
@@ -224,6 +224,20 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 		}
 		zombieMap[info->zombieNumberAttackedMe].ChangeState();
 	}
+
+	if (info->wrestleState == EWrestleState::WAITING)
+	{
+		info->wrestleWaitElapsedTime += 0.016f;
+		if (info->wrestleWaitElapsedTime >= info->wrestleWaitTime)
+		{
+			info->wrestleWaitElapsedTime = 0.f;
+			info->wrestleState = EWrestleState::ABLE;
+		}
+	}
+
+	// 레슬링 후 플레이어의 방어 성공 여부에 따른 처리 하고
+	// 날 추격하는 좀비 상태 변경
+	//zombieMap[info->zombieNumberAttackedMe].ChangeState();
 
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";

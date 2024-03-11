@@ -11,6 +11,7 @@ Zombie::Zombie() : zombieState(IdleState::GetInstance()), targetInfo(nullptr)
 void Zombie::ChangeState()
 {
 	zombieState->ChangeState(this);
+	elapsedWaitingTime = 0.f;
 }
 
 void Zombie::Update()
@@ -59,4 +60,10 @@ bool Zombie::Waiting()
 		return true;
 	}
 	return false;
+}
+
+void Zombie::SetTargetWrestleState(const EWrestleState state)
+{
+	targetInfo->wrestleState = state;
+	targetInfo->sendInfoBitMask |= (1 << 3);
 }

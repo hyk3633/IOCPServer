@@ -42,21 +42,29 @@ public:
 
 	inline ZombieInfo& GetZombieInfo() { return zombieInfo; }
 
+	inline EZombieState GetStateEnum() const { return zombieInfo.state; }
+
 	inline void SetZombieLocation(const Vector3D& location) { zombieInfo.location = location; }
 
-	inline Vector3D GetZombieLocation() { return zombieInfo.location; }
-	
-	inline void SetTarget(CharacterInfo* info) { targetInfo = info; }
+	inline Vector3D GetZombieLocation() const { return zombieInfo.location; }
 
-	inline void SetTargetNumber(const int number) { zombieInfo.targetNumber = number; }
-
-	inline Vector3D GetTargetLocation() { return targetInfo->location; }
-
-	inline EZombieState GetStateEnum() const { return zombieInfo.state; }
+	inline Rotator GetZombieRotation() const { return zombieInfo.rotation; }
 
 	inline void SetNextGrid(const Vector3D& nextLocation) { zombieInfo.nextLocation = nextLocation; }
 
 	bool Waiting();
+
+	/* 타겟 관련 함수 */
+
+	inline void SetTarget(PlayerInfo* info) { targetInfo = info; }
+
+	inline void SetTargetNumber(const int number) { zombieInfo.targetNumber = number; }
+
+	inline Vector3D GetTargetLocation() { return targetInfo->characterInfo.location; }
+
+	inline EWrestleState GetTargetWrestleState() const { return targetInfo->wrestleState; }
+
+	void SetTargetWrestleState(const EWrestleState state);
 
 private:
 
@@ -66,7 +74,7 @@ private:
 
 	unique_ptr<PathManager> pathManager;
 
-	CharacterInfo* targetInfo;
+	PlayerInfo* targetInfo;
 
 	float speed = 100.f;
 

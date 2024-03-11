@@ -1,12 +1,15 @@
 #pragma once
 
 #include <sstream>
+#include <math.h>
 
 using namespace std;
 
 #define SERVER_PORT 9999
 #define PACKET_SIZE 4096
 #define GRID_DIST 50
+
+#define PI 3.1415926535897932f
 
 enum class EPacketType
 {
@@ -91,6 +94,24 @@ struct Rotator
 
 	Rotator() : pitch(0), yaw(0), roll(0) {}
 	Rotator(float p, float y, float r) : pitch(p), yaw(y), roll(r) {}
+
+	float DegreesToRadian(float degreeVal)
+	{
+		return degreeVal* (PI / 180.f);
+	}
+
+	Vector3D GetForwardVector()
+	{
+		float rPitch = DegreesToRadian(pitch);
+		float rYaw = DegreesToRadian(yaw);
+
+		float SP = sin(rPitch);
+		float CP = cos(rPitch);
+		float SY = sin(rYaw);
+		float CY = cos(rYaw);
+
+		return Vector3D{ CP * CY, CP * SY, SP };
+	}
 
 	friend istream& operator>>(istream& stream, Rotator& rot)
 	{

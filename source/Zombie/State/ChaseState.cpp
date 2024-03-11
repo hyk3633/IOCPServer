@@ -11,13 +11,18 @@ void ChaseState::ChangeState(Zombie* zombie)
 
 	if (distance <= 100.f)
 	{
-		zombie->SetZombieState(AttackState::GetInstance());
-
-		// 플레이어가 wrestle 상태면 wait
-		//zombie.SetZombieState(WaitState::GetInstance());
-
-		// 플레이어가 위 두 상태가 아니면 grab
-		//zombie.SetZombieState(GrabState::GetInstance());
+		if (zombie->GetTargetWrestleState() == EWrestleState::ABLE)
+		{
+			zombie->SetZombieState(GrabState::GetInstance());
+		}
+		else if (zombie->GetTargetWrestleState() == EWrestleState::WAITING)
+		{
+			zombie->SetZombieState(AttackState::GetInstance());
+		}
+		else
+		{
+			zombie->SetZombieState(WaitState::GetInstance());
+		}
 	}
 	else
 	{
@@ -33,10 +38,18 @@ void ChaseState::Update(Zombie* zombie)
 
 		if (distance <= 100.f)
 		{
-			zombie->SetZombieState(AttackState::GetInstance());
-
-			// 플레이어가 wrestle 상태면 wait
-			// 플레이어가 위 두 상태가 아니면 grab
+			if (zombie->GetTargetWrestleState() == EWrestleState::ABLE)
+			{
+				zombie->SetZombieState(GrabState::GetInstance());
+			}
+			else if (zombie->GetTargetWrestleState() == EWrestleState::WAITING)
+			{
+				zombie->SetZombieState(AttackState::GetInstance());
+			}
+			else
+			{
+				zombie->SetZombieState(WaitState::GetInstance());
+			}
 		}
 		else if (distance > 100.f && distance <= 1200.f)
 		{

@@ -10,12 +10,18 @@ void WaitState::ChangeState(Zombie* zombie)
 	const float distance = zombie->GetZombieLocation().GetDistance(zombie->GetTargetLocation());
 	if (distance <= 100.f)
 	{
-		// 플레이어가 wrestle 상태면 wait
-		//zombie.SetZombieState(WaitState::GetInstance());
-		
-		zombie->SetZombieState(AttackState::GetInstance());
-
-		//zombie->SetZombieState(GrabState::GetInstance());
+		if (zombie->GetTargetWrestleState() == EWrestleState::ABLE)
+		{
+			zombie->SetZombieState(GrabState::GetInstance());
+		}
+		else if (zombie->GetTargetWrestleState() == EWrestleState::WAITING)
+		{
+			zombie->SetZombieState(AttackState::GetInstance());
+		}
+		else
+		{
+			zombie->SetZombieState(WaitState::GetInstance());
+		}
 	}
 	else if (distance > 100.f && distance <= 1200.f)
 	{
