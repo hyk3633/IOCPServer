@@ -5,8 +5,17 @@
 
 void GrabState::ChangeState(Zombie* zombie)
 {
-	//zombie->SetZombieState(BiteState::GetInstance());
-	//zombie->SetZombieState(BlockedState::GetInstance());
+	if (zombie->IsTargetSetted())
+	{
+		if (zombie->GetTargetSuccessToBlock())
+		{
+			zombie->SetZombieState(BlockedState::GetInstance());
+		}
+		else
+		{
+			zombie->SetZombieState(BiteState::GetInstance());
+		}
+	}
 }
 
 void GrabState::Update(Zombie* zombie)

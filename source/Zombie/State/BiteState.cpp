@@ -3,7 +3,7 @@
 
 void BiteState::ChangeState(Zombie* zombie)
 {
-	//zombie->SetZombieState(WaitState::GetInstance());
+	zombie->SetZombieState(WaitState::GetInstance());
 }
 
 void BiteState::Update(Zombie* zombie)

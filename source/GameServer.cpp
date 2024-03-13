@@ -225,6 +225,27 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 		zombieMap[info->zombieNumberAttackedMe].ChangeState();
 	}
 
+	if (info->infoBitMask & (1 << 3))
+	{
+		info->sendInfoBitMask |= (1 << 4);
+		if (info->bSuccessToBlocking)
+		{
+			info->bSuccessToBlocking = true;
+			zombieMap[info->zombieNumberAttackedMe].ChangeState();
+		}
+		else
+		{
+			info->bSuccessToBlocking = false;
+			zombieMap[info->zombieNumberAttackedMe].ChangeState();
+		}
+	}
+
+	if (info->infoBitMask & (1 << 5))
+	{
+		zombieMap[info->zombieNumberAttackedMe].ChangeState();
+		info->wrestleState = EWrestleState::WAITING;
+	}
+
 	if (info->wrestleState == EWrestleState::WAITING)
 	{
 		info->wrestleWaitElapsedTime += 0.016f;

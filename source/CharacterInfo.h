@@ -125,6 +125,8 @@ struct PlayerInfo
 	float wrestleWaitTime = 5.f;
 	float wrestleWaitElapsedTime = 0.f;
 
+	bool bSuccessToBlocking;
+
 	friend istream& operator>>(istream& stream, PlayerInfo& info)
 	{
 		stream >> info.characterInfo;
@@ -147,6 +149,10 @@ struct PlayerInfo
 		{
 			stream >> info.isHitted;
 			stream >> info.zombieNumberAttackedMe;
+		}
+		if (info.infoBitMask & (1 << 3))
+		{
+			stream >> info.bSuccessToBlocking;
 		}
 		return stream;
 	}
@@ -188,6 +194,11 @@ public:
 			{
 				stream << static_cast<int>(p.second.wrestleState) << "\n";
 				p.second.sendInfoBitMask &= ~(1 << 3);
+			}
+			if (p.second.sendInfoBitMask & (1 << 4))
+			{
+				stream << p.second.bSuccessToBlocking << "\n";
+				p.second.sendInfoBitMask &= ~(1 << 4);
 			}
 		}
 		return stream;

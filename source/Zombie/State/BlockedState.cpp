@@ -3,7 +3,7 @@
 
 void BlockedState::ChangeState(Zombie* zombie)
 {
-	//zombie->SetZombieState(WaitState::GetInstance());
+	zombie->SetZombieState(WaitState::GetInstance());
 }
 
 void BlockedState::Update(Zombie* zombie)

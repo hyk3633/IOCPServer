@@ -66,6 +66,8 @@ public:
 
 	void SetTargetWrestleState(const EWrestleState state);
 
+	inline bool GetTargetSuccessToBlock() const { return targetInfo->bSuccessToBlocking; }
+
 private:
 
 	ZombieState* zombieState;
@@ -80,7 +82,7 @@ private:
 
 	float interval = 0.016f;
 
-	float waitingTime = 1.5f;
+	float waitingTime = 1.25f;
 
 	float elapsedWaitingTime = 0.f;
 

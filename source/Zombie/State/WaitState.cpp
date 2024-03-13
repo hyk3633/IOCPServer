@@ -37,6 +37,7 @@ void WaitState::Update(Zombie* zombie)
 {
 	if (zombie->Waiting())
 	{
+		cout << "zombie waiting end\n";
 		zombie->ChangeState();
 	}
 }
