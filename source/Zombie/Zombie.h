@@ -48,6 +48,8 @@ public:
 
 	inline Vector3D GetZombieLocation() const { return zombieInfo.location; }
 
+	inline void SetZombieRotation(const Rotator& rotation) { zombieInfo.rotation = rotation; }
+
 	inline Rotator GetZombieRotation() const { return zombieInfo.rotation; }
 
 	inline void SetNextGrid(const Vector3D& nextLocation) { zombieInfo.nextLocation = nextLocation; }
@@ -61,6 +63,8 @@ public:
 	inline void SetTargetNumber(const int number) { zombieInfo.targetNumber = number; }
 
 	inline Vector3D GetTargetLocation() { return targetInfo->characterInfo.location; }
+
+	inline Rotator GetTargetRotation() { return targetInfo->characterInfo.rotation; }
 
 	inline EWrestleState GetTargetWrestleState() const { return targetInfo->wrestleState; }
 

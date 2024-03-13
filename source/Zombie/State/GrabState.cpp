@@ -24,8 +24,13 @@ void GrabState::Update(Zombie* zombie)
 	{
 		zombie->SetTargetWrestleState(EWrestleState::WRESTLING);
 
-		const Vector3D newLocation = zombie->GetTargetLocation() + (zombie->GetZombieRotation().GetForwardVector() * 70.f);
+		const Vector3D newLocation = zombie->GetTargetLocation() + (zombie->GetTargetRotation().GetForwardVector() * 70.f);
+		Rotator newRotation = zombie->GetZombieRotation();
+		newRotation.yaw = zombie->GetTargetRotation().yaw + 180.f;
+		if (newRotation.yaw > 360.f)
+			newRotation.yaw -= 360.f;
 		zombie->SetZombieLocation(newLocation);
+		zombie->SetZombieRotation(newRotation);
 	}
 }
 
