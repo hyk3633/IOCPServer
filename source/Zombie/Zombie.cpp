@@ -65,5 +65,5 @@ bool Zombie::Waiting()
 void Zombie::SetTargetWrestleState(const EWrestleState state)
 {
 	targetInfo->wrestleState = state;
-	targetInfo->sendInfoBitMask |= (1 << 3);
+	targetInfo->sendInfoBitMask |= (1 << static_cast<int>(PIBTS::WrestlingState));
 }

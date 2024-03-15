@@ -35,6 +35,10 @@ protected:
 
 	static void SynchronizePlayerInfo(SocketInfo*, stringstream&);
 
+	static void ProcessPlayerInfo(const int playerNumber, PlayerInfo& info);
+
+	static void CheckInfoBitAndProcess(const int playerNumber, PlayerInfo& info, const PIBTC bitType);
+
 	static void BroadcastPlyerInputAction(SocketInfo*, stringstream&);
 
 	static void Broadcast(stringstream&, const int skipNumber = -1);

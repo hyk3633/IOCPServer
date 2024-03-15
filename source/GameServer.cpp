@@ -199,62 +199,11 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 
 void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& recvStream)
 {
-	//EnterCriticalSection(&critsecPlayerInfo);
+	EnterCriticalSection(&critsecPlayerInfo);
 	recvStream >> playerInfoSetEx.characterInfoMap[socketInfo->number];
-	//LeaveCriticalSection(&critsecPlayerInfo);
+	LeaveCriticalSection(&critsecPlayerInfo);
 
-	PlayerInfo* info = &playerInfoSetEx.characterInfoMap[socketInfo->number];
-	// 좀비의 타겟을 이 플레이어로 지정하고 상태 변경 및 이동 시키기
-	for (int number : info->zombiesWhoSawMe)
-	{
-		zombieMap[number].SetTargetNumber(socketInfo->number);
-		zombieMap[number].SetTarget(info);
-		zombieMap[number].ChangeState();
-	}
-
-	if (info->infoBitMask & (1 << 2))
-	{
-		if (info->isHitted)
-		{
-			cout << socketInfo->number << " 가 좀비" << info->zombieNumberAttackedMe << " 에게 맞았습니다.\n";
-		}
-		else
-		{
-			cout << socketInfo->number << " 는 좀비가 때렸지만 맞지 않았습니다.\n";
-		}
-		zombieMap[info->zombieNumberAttackedMe].ChangeState();
-	}
-
-	if (info->infoBitMask & (1 << 3))
-	{
-		info->sendInfoBitMask |= (1 << 4);
-		if (info->bSuccessToBlocking)
-		{
-			info->bSuccessToBlocking = true;
-			zombieMap[info->zombieNumberAttackedMe].ChangeState();
-		}
-		else
-		{
-			info->bSuccessToBlocking = false;
-			zombieMap[info->zombieNumberAttackedMe].ChangeState();
-		}
-	}
-
-	if (info->infoBitMask & (1 << 5))
-	{
-		zombieMap[info->zombieNumberAttackedMe].ChangeState();
-		info->wrestleState = EWrestleState::WAITING;
-	}
-
-	if (info->wrestleState == EWrestleState::WAITING)
-	{
-		info->wrestleWaitElapsedTime += 0.016f;
-		if (info->wrestleWaitElapsedTime >= info->wrestleWaitTime)
-		{
-			info->wrestleWaitElapsedTime = 0.f;
-			info->wrestleState = EWrestleState::ABLE;
-		}
-	}
+	ProcessPlayerInfo(socketInfo->number, playerInfoSetEx.characterInfoMap[socketInfo->number]);
 
 	// 레슬링 후 플레이어의 방어 성공 여부에 따른 처리 하고
 	// 날 추격하는 좀비 상태 변경
@@ -264,6 +213,70 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";
 	sendStream << playerInfoSetEx << "\n";
 	Send(socketInfo, sendStream);
+}
+
+void GameServer::ProcessPlayerInfo(const int playerNumber, PlayerInfo& info)
+{
+	const int bitMax = static_cast<int>(PIBTC::MAX);
+	for (int bit = 0; bit < bitMax; bit++)
+	{
+		if (info.recvInfoBitMask & (1 << bit))
+		{
+			CheckInfoBitAndProcess(playerNumber, info, static_cast<PIBTC>(bit));
+		}
+	}
+
+	if (info.wrestleState == EWrestleState::WAITING)
+	{
+		info.wrestleWaitElapsedTime += 0.016f;
+		if (info.wrestleWaitElapsedTime >= info.wrestleWaitTime)
+		{
+			info.wrestleWaitElapsedTime = 0.f;
+			info.wrestleState = EWrestleState::ABLE;
+		}
+	}
+}
+
+void GameServer::CheckInfoBitAndProcess(const int playerNumber, PlayerInfo& info, const PIBTC bitType)
+{
+	switch (bitType)
+	{
+		case PIBTC::UncoveredByZombie:
+		{
+			for (int i = 0; i < info.zombiesWhoSawMe.size(); i++)
+			{
+				zombieMap[i].SetTargetNumber(playerNumber);
+				zombieMap[i].SetTarget(&info);
+				zombieMap[i].ChangeState();
+			}
+			break;
+		}
+		case PIBTC::ZombieAttackResult:
+		{
+			zombieMap[info.zombieNumberAttackedMe].ChangeState();
+			break;
+		}
+		case PIBTC::WrestlingResult:
+		{
+			info.sendInfoBitMask |= (1 << static_cast<int>(PIBTS::PlayGrabReaction));
+			if (info.isSuccessToBlocking)
+			{
+				info.isBlockingAction = true;
+			}
+			else
+			{
+				info.isBlockingAction = false;
+			}
+			zombieMap[info.zombieNumberAttackedMe].ChangeState();
+			break;
+		}
+		case PIBTC::WrestlingEnd:
+		{
+			zombieMap[info.zombieNumberAttackedMe].ChangeState();
+			info.wrestleState = EWrestleState::WAITING;
+			break;
+		}
+	}
 }
 
 void GameServer::BroadcastPlyerInputAction(SocketInfo* socketInfo, stringstream& recvStream)

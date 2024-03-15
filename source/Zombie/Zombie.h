@@ -70,7 +70,7 @@ public:
 
 	void SetTargetWrestleState(const EWrestleState state);
 
-	inline bool GetTargetSuccessToBlock() const { return targetInfo->bSuccessToBlocking; }
+	inline bool GetTargetSuccessToBlock() const { return targetInfo->isSuccessToBlocking; }
 
 private:
 
