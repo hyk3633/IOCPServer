@@ -22,6 +22,8 @@ public:
 
 	void Update();
 
+	void AllZombieInfoBitOn();
+
 	/* 스테이트 객체에서 호출 하는 함수 */
 
 	void SetZombieState(ZombieState* newState);
@@ -48,11 +50,11 @@ public:
 
 	inline Vector3D GetZombieLocation() const { return zombieInfo.location; }
 
-	inline void SetZombieRotation(const Rotator& rotation) { zombieInfo.rotation = rotation; }
+	void SetZombieRotation(const Rotator& rotation);
 
 	inline Rotator GetZombieRotation() const { return zombieInfo.rotation; }
 
-	inline void SetNextGrid(const Vector3D& nextLocation) { zombieInfo.nextLocation = nextLocation; }
+	void SetNextGrid(const Vector3D& nextLocation);
 
 	bool Waiting();
 
@@ -60,7 +62,7 @@ public:
 
 	inline void SetTarget(PlayerInfo* info) { targetInfo = info; }
 
-	inline void SetTargetNumber(const int number) { zombieInfo.targetNumber = number; }
+	void SetTargetNumber(const int number);
 
 	inline Vector3D GetTargetLocation() { return targetInfo->characterInfo.location; }
 
@@ -71,6 +73,10 @@ public:
 	void SetTargetWrestleState(const EWrestleState state);
 
 	inline bool GetTargetSuccessToBlock() const { return targetInfo->isSuccessToBlocking; }
+
+protected:
+
+	void MaskToInfoBit(const ZIBT bitType);
 
 private:
 

@@ -6,30 +6,78 @@
 #include "Define.h"
 #include "Zombie/State/ZombieState.h"
 #include <iostream>
+
 using namespace std;
+
+enum class EZombieInfoBitType
+{
+	Location,
+	Rotation,
+	State,
+	TargetNumber,
+	NextLocation,
+	MAX
+};
+
+typedef EZombieInfoBitType ZIBT;
 
 struct ZombieInfo
 {
+	int sendInfoBitMask;
+
 	Vector3D location;
 	Rotator rotation;
 	EZombieState state = EZombieState::IDLE;
 	int targetNumber;
 	Vector3D nextLocation;
 
-	friend istream& operator>>(istream& stream, ZombieInfo& info)
+	friend ostream& operator<<(ostream& stream, ZombieInfo& info)
 	{
-		stream >> info.location;
+		stream << info.sendInfoBitMask << "\n";
+
+		const int bitMax = static_cast<int>(ZIBT::MAX);
+		for (int bit = 0; bit < bitMax; bit++)
+		{
+			if (info.sendInfoBitMask & (1 << bit))
+			{
+				SaveInfoToPacket(stream, info, bit);
+				info.sendInfoBitMask &= ~(1 << bit);
+			}
+		}
 		return stream;
 	}
 
-	friend ostream& operator<<(ostream& stream, ZombieInfo& info)
+	friend void SaveInfoToPacket(std::ostream& stream, ZombieInfo& info, const int bitType)
 	{
-		stream << info.location;
-		stream << info.rotation;
-		stream << static_cast<int>(info.state) << "\n";
-		stream << info.targetNumber << "\n";
-		stream << info.nextLocation;
-		return stream;
+		ZIBT type = static_cast<ZIBT>(bitType);
+		switch (type)
+		{
+			case ZIBT::Location:
+			{
+				stream << info.location;
+				break;
+			}
+			case ZIBT::Rotation:
+			{
+				stream << info.rotation;
+				break;
+			}
+			case ZIBT::State:
+			{
+				stream << static_cast<int>(info.state) << "\n";
+				break;
+			}
+			case ZIBT::TargetNumber:
+			{
+				stream << info.targetNumber << "\n";
+				break;
+			}
+			case ZIBT::NextLocation:
+			{
+				stream << info.nextLocation;
+				break;
+			}
+		}
 	}
 };
 
@@ -41,21 +89,6 @@ public:
 	~ZombieInfoSet() {};
 
 	unordered_map<int, ZombieInfo> zombieInfoMap;
-
-	friend istream& operator>>(istream& stream, ZombieInfoSet& info)
-	{
-		int characterCount = 0;
-		int characterNumber = 0;
-		info.zombieInfoMap.clear();
-
-		stream >> characterCount;
-		for (int i = 0; i < characterCount; i++)
-		{
-			stream >> characterNumber;
-			stream >> info.zombieInfoMap[characterNumber];
-		}
-		return stream;
-	}
 
 	friend ostream& operator<<(ostream& stream, ZombieInfoSet& info)
 	{

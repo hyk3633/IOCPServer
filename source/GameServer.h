@@ -33,6 +33,8 @@ protected:
 
 	static void SpawnOtherPlayers(SocketInfo*, stringstream&);
 
+	static void SaveZombieInfoToPacket(stringstream&);
+
 	static void SynchronizePlayerInfo(SocketInfo*, stringstream&);
 
 	static void ProcessPlayerInfo(const int playerNumber, PlayerInfo& info);

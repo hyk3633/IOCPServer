@@ -6,7 +6,6 @@ class Zombie;
 enum class EZombieState
 {
 	IDLE,
-	PATROL,
 	CHASE,
 	ATTACK,
 	GRAB,

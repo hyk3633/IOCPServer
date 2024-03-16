@@ -6,7 +6,7 @@ CRITICAL_SECTION					GameServer::critsecPlayerInfo;
 unordered_map<int, SocketInfo*>		GameServer::playerSocketMap;
 PlayerInfoSetEx						GameServer::playerInfoSetEx;
 int									GameServer::playerCount;
-ZombieInfoSet					GameServer::zombieInfoSet;
+ZombieInfoSet						GameServer::zombieInfoSet;
 unordered_map<int, Zombie>			GameServer::zombieMap;
 
 unsigned int WINAPI ZombieThreadStart(LPVOID param)
@@ -173,9 +173,9 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 	EnterCriticalSection(&critsecPlayerInfo);
 
 	// 기존 플레이어들의 정보를 방금 접속한 플레이어에게 보낼 스트림에 저장
-	stringstream sendStream1;
-	sendStream1 << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
-	playerInfoSetEx.OutputStreamWithID(sendStream1);
+	stringstream otherPlayersInfoStream;
+	otherPlayersInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
+	playerInfoSetEx.OutputStreamWithID(otherPlayersInfoStream);
 
 	// 방금 접속한 플레이어의 정보 추가
 	recvStream >> playerInfoSetEx.characterInfoMap[socketInfo->number];
@@ -185,16 +185,34 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 	newPlayerInfoSet.playerIDMap[socketInfo->number] = playerInfoSetEx.playerIDMap[socketInfo->number];
 	newPlayerInfoSet.characterInfoMap[socketInfo->number] = playerInfoSetEx.characterInfoMap[socketInfo->number];
 
-	stringstream sendStream2;
-	sendStream2 << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
-	newPlayerInfoSet.OutputStreamWithID(sendStream2);	
+	stringstream newPlayerInfoStream;
+	newPlayerInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
+	newPlayerInfoSet.OutputStreamWithID(newPlayerInfoStream);
 
 	// 방금 접속한 플레이어에게 기존의 플레이어들 정보 전송
-	Send(socketInfo, sendStream1);
+	Send(socketInfo, otherPlayersInfoStream);
+
+	// 방금 접속한 플레이어에게 좀비 정보 동기화
+	stringstream zombieInfoStream;
+	SaveZombieInfoToPacket(zombieInfoStream);
+	Send(socketInfo, zombieInfoStream);
 
 	// 기존의 플레이어들에게 방금 접속한 플레이어 정보 전송
-	Broadcast(sendStream2, socketInfo->number);
+	Broadcast(newPlayerInfoStream, socketInfo->number);
+
 	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::SaveZombieInfoToPacket(stringstream& sendStream)
+{
+	sendStream << static_cast<int>(EPacketType::SYNCHZOMBIE) << "\n";
+	sendStream << zombieMap.size() << "\n";
+	for (auto& kv : zombieMap)
+	{
+		kv.second.AllZombieInfoBitOn();
+		sendStream << kv.first << "\n";
+		sendStream << kv.second.GetZombieInfo() << "\n";
+	}
 }
 
 void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& recvStream)
@@ -204,10 +222,6 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 	LeaveCriticalSection(&critsecPlayerInfo);
 
 	ProcessPlayerInfo(socketInfo->number, playerInfoSetEx.characterInfoMap[socketInfo->number]);
-
-	// 레슬링 후 플레이어의 방어 성공 여부에 따른 처리 하고
-	// 날 추격하는 좀비 상태 변경
-	//zombieMap[info->zombieNumberAttackedMe].ChangeState();
 
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";
