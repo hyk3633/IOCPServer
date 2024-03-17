@@ -144,8 +144,6 @@ enum class EPlayerInfoBitTypeClient
 {
 	UncoveredByZombie,
 	ZombieAttackResult,
-	WrestlingResult,
-	WrestlingEnd,
 	MAX
 };
 
@@ -154,7 +152,6 @@ typedef EPlayerInfoBitTypeClient PIBTC;
 enum class EPlayerInfoBitTypeServer
 {
 	WrestlingState,
-	PlayGrabReaction,
 	MAX
 };
 
@@ -170,13 +167,12 @@ struct PlayerInfo
 	vector<int> zombiesWhoSawMe;
 	bool isHitted;
 	int zombieNumberAttackedMe;
-	bool isSuccessToBlocking;
 
 	// 클라이언트 전송용 데이터
 	int sendInfoBitMask;
-	EWrestleState wrestleState = EWrestleState::ABLE;
-	bool isBlockingAction;
 
+	bool isSuccessToBlocking;
+	EWrestleState wrestleState = EWrestleState::ABLE;
 	float wrestleWaitTime = 5.f;
 	float wrestleWaitElapsedTime = 0.f;
 
@@ -184,15 +180,15 @@ struct PlayerInfo
 	{
 		stream << info.characterInfo;
 		stream << info.sendInfoBitMask << "\n";
-		const int bitMax = static_cast<int>(PIBTC::MAX);
-		for (int bit = 0; bit < bitMax; bit++)
-		{
-			if (info.sendInfoBitMask & (1 << bit))
-			{
-				SaveInfoToPacket(stream, info, bit);
-				info.sendInfoBitMask &= ~(1 << bit);
-			}
-		}
+		//const int bitMax = static_cast<int>(PIBTC::MAX);
+		//for (int bit = 0; bit < bitMax; bit++)
+		//{
+		//	if (info.sendInfoBitMask & (1 << bit))
+		//	{
+		//		SaveInfoToPacket(stream, info, bit);
+		//		info.sendInfoBitMask &= ~(1 << bit);
+		//	}
+		//}
 		return stream;
 	}
 
@@ -203,12 +199,6 @@ struct PlayerInfo
 		{
 			case PIBTS::WrestlingState:
 			{
-				stream << static_cast<int>(info.wrestleState) << "\n";
-				break;
-			}
-			case PIBTS::PlayGrabReaction:
-			{
-				stream << info.isBlockingAction << "\n";
 				break;
 			}
 		}
@@ -250,15 +240,6 @@ struct PlayerInfo
 			{
 				stream >> isHitted;
 				stream >> zombieNumberAttackedMe;
-				break;
-			}
-			case PIBTC::WrestlingResult:
-			{
-				stream >> isSuccessToBlocking;
-				break;
-			}
-			case PIBTC::WrestlingEnd:
-			{
 				break;
 			}
 		}

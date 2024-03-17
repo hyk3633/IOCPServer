@@ -11,6 +11,8 @@ using namespace std;
 
 #define PI 3.1415926535897932f
 
+typedef void(*WrestlingBroadcast)(int);
+
 enum class EPacketType
 {
 	SIGNUP,
@@ -19,6 +21,8 @@ enum class EPacketType
 	SYNCHPLAYER,
 	SYNCHZOMBIE,
 	PLAYERINPUTACTION,
+	WRESTLINGRESULT,
+	WRESTLINGSTART,
 	PACKETTYPE_MAX,
 	PLAYERDISCONNECTED
 };

@@ -37,6 +37,7 @@ bool GameServer::InitializeServer()
 	packetCallbacks[static_cast<int>(EPacketType::SPAWNPLAYER)] = SpawnOtherPlayers;
 	packetCallbacks[static_cast<int>(EPacketType::SYNCHPLAYER)] = SynchronizePlayerInfo;
 	packetCallbacks[static_cast<int>(EPacketType::PLAYERINPUTACTION)] = BroadcastPlyerInputAction;
+	packetCallbacks[static_cast<int>(EPacketType::WRESTLINGRESULT)] = ProcessPlayerWrestlingResult;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
@@ -108,6 +109,7 @@ void GameServer::InitializeZombieInfo()
 	info.rotation.yaw = 120;
 
 	zombieMap[0].SetZombieInfo(info);
+	zombieMap[0].RegisterBroadcastCallback(ProcessPlayerWrestlingStart);
 
 	info.location.X = 1100;
 	info.location.Y = 900;
@@ -270,26 +272,6 @@ void GameServer::CheckInfoBitAndProcess(const int playerNumber, PlayerInfo& info
 			zombieMap[info.zombieNumberAttackedMe].ChangeState();
 			break;
 		}
-		case PIBTC::WrestlingResult:
-		{
-			info.sendInfoBitMask |= (1 << static_cast<int>(PIBTS::PlayGrabReaction));
-			if (info.isSuccessToBlocking)
-			{
-				info.isBlockingAction = true;
-			}
-			else
-			{
-				info.isBlockingAction = false;
-			}
-			zombieMap[info.zombieNumberAttackedMe].ChangeState();
-			break;
-		}
-		case PIBTC::WrestlingEnd:
-		{
-			zombieMap[info.zombieNumberAttackedMe].ChangeState();
-			info.wrestleState = EWrestleState::WAITING;
-			break;
-		}
 	}
 }
 
@@ -305,6 +287,38 @@ void GameServer::BroadcastPlyerInputAction(SocketInfo* socketInfo, stringstream&
 
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream, socketInfo->number);
+	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::ProcessPlayerWrestlingResult(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	bool wrestlingResult;
+	recvStream >> wrestlingResult;
+
+	PlayerInfo& info = playerInfoSetEx.characterInfoMap[socketInfo->number];
+	info.wrestleState = EWrestleState::WAITING;
+	info.isSuccessToBlocking = wrestlingResult;
+
+	zombieMap[info.zombieNumberAttackedMe].ChangeState();
+
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::WRESTLINGRESULT) << "\n";
+	sendStream << socketInfo->number << "\n";
+	sendStream << wrestlingResult << "\n";
+
+	EnterCriticalSection(&critsecPlayerInfo);
+	Broadcast(sendStream, socketInfo->number);
+	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::ProcessPlayerWrestlingStart(const int playerNumber)
+{
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::WRESTLINGSTART) << "\n";
+	sendStream << playerNumber << "\n";
+
+	EnterCriticalSection(&critsecPlayerInfo);
+	Broadcast(sendStream);
 	LeaveCriticalSection(&critsecPlayerInfo);
 }
 

@@ -19,6 +19,8 @@ public:
 
 	void ZombieThread();
 
+	void SyncThread();
+
 protected:
 
 	virtual bool CreateZombieThread();
@@ -42,6 +44,10 @@ protected:
 	static void CheckInfoBitAndProcess(const int playerNumber, PlayerInfo& info, const PIBTC bitType);
 
 	static void BroadcastPlyerInputAction(SocketInfo*, stringstream&);
+
+	static void ProcessPlayerWrestlingResult(SocketInfo*, stringstream&);
+
+	static void ProcessPlayerWrestlingStart(const int playerNumber);
 
 	static void Broadcast(stringstream&, const int skipNumber = -1);
 

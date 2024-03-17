@@ -8,7 +8,10 @@ void BlockedState::ChangeState(Zombie* zombie)
 
 void BlockedState::Update(Zombie* zombie)
 {
-
+	if (zombie->Waiting())
+	{
+		zombie->ChangeState();
+	}
 }
 
 EZombieState BlockedState::GetStateEnum()

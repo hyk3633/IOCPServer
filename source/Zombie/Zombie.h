@@ -70,9 +70,11 @@ public:
 
 	inline EWrestleState GetTargetWrestleState() const { return targetInfo->wrestleState; }
 
-	void SetTargetWrestleState(const EWrestleState state);
+	void SetTargetWrestle();
 
 	inline bool GetTargetSuccessToBlock() const { return targetInfo->isSuccessToBlocking; }
+
+	void RegisterBroadcastCallback(WrestlingBroadcast wb);
 
 protected:
 
@@ -95,5 +97,7 @@ private:
 	float waitingTime = 1.25f;
 
 	float elapsedWaitingTime = 0.f;
+
+	WrestlingBroadcast wbCallback = nullptr;
 
 };

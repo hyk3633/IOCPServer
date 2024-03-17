@@ -87,10 +87,15 @@ void Zombie::SetTargetNumber(const int number)
 	MaskToInfoBit(ZIBT::TargetNumber);
 }
 
-void Zombie::SetTargetWrestleState(const EWrestleState state)
+void Zombie::SetTargetWrestle()
 {
-	targetInfo->wrestleState = state;
-	targetInfo->sendInfoBitMask |= (1 << static_cast<int>(PIBTS::WrestlingState));
+	targetInfo->wrestleState = EWrestleState::WRESTLING;
+	wbCallback(zombieInfo.targetNumber);
+}
+
+void Zombie::RegisterBroadcastCallback(WrestlingBroadcast wb)
+{
+	wbCallback = wb;
 }
 
 void Zombie::MaskToInfoBit(const ZIBT bitType)
