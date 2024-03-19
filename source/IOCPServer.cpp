@@ -1,7 +1,7 @@
 #include "IOCPServer.h"
 #include <sstream>
 
-DBConnector* IOCPServer::dbConnector = DBConnector::GetInstance();
+DBConnector*				IOCPServer::dbConnector = DBConnector::GetInstance();
 
 unsigned int WINAPI WorkerThreadStart(LPVOID param)
 {
@@ -166,6 +166,7 @@ void IOCPServer::WorkerThread()
 		if (recvSocketInfo == nullptr) continue;
 
 		recvSocketInfo->wsaBuf.len = recvBytes;
+
 		int packetType;
 		stringstream recvStream;
 
@@ -173,7 +174,7 @@ void IOCPServer::WorkerThread()
 		recvStream >> packetType;
 
 		// 함수 포인터로 패킷 처리
-		if (packetType < static_cast<int>(EPacketType::PACKETTYPE_MAX))
+		if (packetType >= 0 && packetType < static_cast<int>(EPacketType::PACKETTYPE_MAX))
 		{
 			packetCallbacks[packetType](recvSocketInfo, recvStream);
 		}
@@ -226,7 +227,7 @@ void IOCPServer::AccepterThread()
 
 void IOCPServer::Send(SocketInfo* socketInfo, stringstream& sendStream)
 {
-	CopyMemory(socketInfo->msgBuf, sendStream.str().c_str(), sendStream.str().length());
+	CopyMemory(socketInfo->msgBuf, (CHAR*)sendStream.str().c_str(), sendStream.str().length());
 	socketInfo->wsaBuf.buf = socketInfo->msgBuf;
 	socketInfo->wsaBuf.len = sendStream.str().length();
 

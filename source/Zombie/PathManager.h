@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
-#include "../Define.h"
+#include "../Structs/Pos.h"
+#include "../Structs/Vector3D.h"
 
 using namespace std;
 

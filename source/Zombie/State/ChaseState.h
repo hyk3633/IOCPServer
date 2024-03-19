@@ -1,7 +1,7 @@
 #pragma once
 #include "ZombieState.h"
-#include "../Zombie.h"
-#include "../../Define.h"
+
+class Zombie;
 
 class ChaseState : public ZombieState
 {

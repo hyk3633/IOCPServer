@@ -1,4 +1,5 @@
 #include "GameServer.h"
+#include "Zombie/Zombie.h"
 #include <sstream>
 #include <chrono>
 
@@ -257,13 +258,19 @@ void GameServer::CheckInfoBitAndProcess(const int playerNumber, PlayerInfo& info
 {
 	switch (bitType)
 	{
-		case PIBTC::UncoveredByZombie:
+		case PIBTC::ZombiesInRange:
 		{
-			for (int i = 0; i < info.zombiesWhoSawMe.size(); i++)
+			for (int i = 0; i < info.zombiesInRange.size(); i++)
 			{
-				zombieMap[i].SetTargetNumber(playerNumber);
-				zombieMap[i].SetTarget(&info);
-				zombieMap[i].ChangeState();
+				zombieMap[i].AddToTargets(playerNumber, &info);
+			}
+			break;
+		}
+		case PIBTC::ZombiesOutRange:
+		{
+			for (int i = 0; i < info.zombiesOutRange.size(); i++)
+			{
+				zombieMap[i].RemoveTargets(playerNumber);
 			}
 			break;
 		}

@@ -8,6 +8,10 @@ void BiteState::ChangeState(Zombie* zombie)
 
 void BiteState::Update(Zombie* zombie)
 {
+	if (zombie->Waiting())
+	{
+		zombie->ChangeState();
+	}
 }
 
 EZombieState BiteState::GetStateEnum()

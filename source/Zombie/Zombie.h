@@ -1,8 +1,9 @@
 #pragma once
 
 #include "State/ZombieState.h"
-#include "PathManager.h"
 #include "../CharacterInfo.h"
+#include <map>
+
 
 using namespace std;
 
@@ -14,7 +15,7 @@ public:
 
 	Zombie();
 
-	~Zombie() = default;
+	~Zombie();
 
 	/* 스레드에서 호출 하는 함수 */
 	
@@ -22,11 +23,17 @@ public:
 
 	void Update();
 
+	void AddToTargets(const int playerNumber, PlayerInfo* playerInfo);
+
+	void RemoveTargets(const int playerNumber);
+
 	void AllZombieInfoBitOn();
 
 	/* 스테이트 객체에서 호출 하는 함수 */
 
 	void SetZombieState(ZombieState* newState);
+
+	bool CheckNearestPlayer();
 
 	bool IsTargetSetted();
 
@@ -49,6 +56,8 @@ public:
 	inline void SetZombieLocation(const Vector3D& location) { zombieInfo.location = location; }
 
 	inline Vector3D GetZombieLocation() const { return zombieInfo.location; }
+
+	inline Vector3D GetForwardVector() { return zombieInfo.rotation.GetForwardVector(); }
 
 	void SetZombieRotation(const Rotator& rotation);
 
@@ -87,6 +96,8 @@ private:
 	ZombieInfo zombieInfo;
 
 	unique_ptr<PathManager> pathManager;
+
+	map<int, PlayerInfo*> targetsMap;
 
 	PlayerInfo* targetInfo;
 

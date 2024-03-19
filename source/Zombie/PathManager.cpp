@@ -2,15 +2,14 @@
 #include "Zombie.h"
 #include "State/ZombieState.h"
 #include "../Pathfinder/PathFinder.h"
+#include "../Structs/Rotator.h"
 
 PathManager::PathManager()
 {
-
 }
 
 PathManager::~PathManager()
 {
-
 }
 
 void PathManager::ProcessMovement()
@@ -40,12 +39,13 @@ void PathManager::FollowPath()
 	{
 		if (pathIdx < pathToTarget.size())
 		{
-			if(pathIdx > 0) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx - 1], true);
-			Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx + 1], false);
+			if (pathIdx > 0) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx - 1], true);
+			if (pathIdx + 1 < pathToTarget.size()) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx + 1], false);
 
 			pathIdx++;
 			nextPoint = Vector3D(pathToTarget[pathIdx].x, pathToTarget[pathIdx].y, zombie->GetZombieLocation().Z);
 			nextDirection = (nextPoint - zombie->GetZombieLocation()).Normalize();
+			zombie->SetZombieRotation(nextDirection.Rotation());
 			zombie->SetNextGrid(nextPoint);
 		}
 	}

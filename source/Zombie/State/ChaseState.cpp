@@ -4,6 +4,8 @@
 #include "AttackState.h"
 #include "GrabState.h"
 #include "../Zombie.h"
+#include "../../Structs/Vector3D.h"
+#include "../../Define.h"
 
 void ChaseState::ChangeState(Zombie* zombie)
 {

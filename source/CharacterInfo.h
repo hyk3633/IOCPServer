@@ -5,6 +5,8 @@
 #include <cmath>
 #include "Define.h"
 #include "Zombie/State/ZombieState.h"
+#include "Structs/Vector3D.h"
+#include "Structs/Rotator.h"
 #include <iostream>
 
 using namespace std;
@@ -142,7 +144,8 @@ enum class EWrestleState
 
 enum class EPlayerInfoBitTypeClient
 {
-	UncoveredByZombie,
+	ZombiesInRange,
+	ZombiesOutRange,
 	ZombieAttackResult,
 	MAX
 };
@@ -164,7 +167,7 @@ struct PlayerInfo
 	int recvInfoBitMask;
 
 	// 클라이언트 수신용 데이터
-	vector<int> zombiesWhoSawMe;
+	vector<int> zombiesInRange, zombiesOutRange;
 	bool isHitted;
 	int zombieNumberAttackedMe;
 
@@ -224,15 +227,27 @@ struct PlayerInfo
 		PIBTC type = static_cast<PIBTC>(bitType);
 		switch (type)
 		{
-			case PIBTC::UncoveredByZombie:
+			case PIBTC::ZombiesInRange:
 			{
-				zombiesWhoSawMe.clear();
+				zombiesInRange.clear();
 				int vectorSize = 0, number = -1;
 				stream >> vectorSize;
 				for (int i = 0; i < vectorSize; i++)
 				{
 					stream >> number;
-					zombiesWhoSawMe.push_back(number);
+					zombiesInRange.push_back(number);
+				}
+				break;
+			}
+			case PIBTC::ZombiesOutRange:
+			{
+				zombiesOutRange.clear();
+				int vectorSize = 0, number = -1;
+				stream >> vectorSize;
+				for (int i = 0; i < vectorSize; i++)
+				{
+					stream >> number;
+					zombiesOutRange.push_back(number);
 				}
 				break;
 			}

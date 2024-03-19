@@ -1,11 +1,12 @@
 #pragma once
 #include "IOCPServer.h"
 #include "CharacterInfo.h"
-#include "Zombie/Zombie.h"
 #include "Pathfinder/PathFinder.h"
 #include <unordered_map>
 
 using namespace std;
+
+class Zombie;
 
 class GameServer : public IOCPServer
 {

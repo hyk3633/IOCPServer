@@ -1,6 +1,7 @@
 #pragma once
 #include "ZombieState.h"
-#include "../Zombie.h"
+
+class Zombie;
 
 class WaitState : public ZombieState
 {
