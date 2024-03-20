@@ -1,12 +1,15 @@
 #include "AttackState.h"
 #include "WaitState.h"
+#include "../Zombie.h"
 
-void AttackState::ChangeState(Zombie* zombie)
+using std::shared_ptr;
+
+void AttackState::ChangeState(shared_ptr<Zombie> zombie)
 {
 	zombie->SetZombieState(WaitState::GetInstance());
 }
 
-void AttackState::Update(Zombie* zombie)
+void AttackState::Update(shared_ptr<Zombie> zombie)
 {
 	
 }

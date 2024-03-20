@@ -1,21 +1,33 @@
 #pragma once
 
-#include "State/ZombieState.h"
-#include "../CharacterInfo.h"
+#include "../Character/Character.h"
+#include "../Enums/ZombieStateEnum.h"
 #include <map>
+#include <memory>
 
-
-using namespace std;
-
+class ZombieState;
 class PathManager;
+class Player;
 
-class Zombie
+enum class EZombieInfoBitType
+{
+	Location,
+	Rotation,
+	State,
+	TargetNumber,
+	NextLocation,
+	MAX
+};
+
+typedef EZombieInfoBitType ZIBT;
+
+class Zombie : public Character, public std::enable_shared_from_this<Zombie>
 {
 public:
 
-	Zombie();
+	Zombie(const int num);
 
-	~Zombie();
+	virtual ~Zombie() override;
 
 	/* 스레드에서 호출 하는 함수 */
 	
@@ -23,9 +35,9 @@ public:
 
 	void Update();
 
-	void AddToTargets(const int playerNumber, PlayerInfo* playerInfo);
+	void AddPlayerToInRangeMap(std::shared_ptr<Player> player);
 
-	void RemoveTargets(const int playerNumber);
+	void RemoveInRangePlayer(const int playerNumber);
 
 	void AllZombieInfoBitOn();
 
@@ -35,9 +47,11 @@ public:
 
 	bool CheckNearestPlayer();
 
-	bool IsTargetSetted();
+	bool IsTargetSet();
 
 	void ProcessMovement();
+
+	bool Waiting();
 
 	/* path manager에서 호출하는 함수 */
 
@@ -45,47 +59,27 @@ public:
 
 	/* getter, setter */
 
-	inline PathManager* GetPathManager() { return pathManager.get(); }
+	PathManager* GetPathManager();
 
-	inline void SetZombieInfo(const ZombieInfo& info) { zombieInfo = info; }
+	EZombieState GetStateEnum() const { return stateEnum; }
 
-	inline ZombieInfo& GetZombieInfo() { return zombieInfo; }
+	void SetRotation(const Rotator& rotation);
 
-	inline EZombieState GetStateEnum() const { return zombieInfo.state; }
-
-	inline void SetZombieLocation(const Vector3D& location) { zombieInfo.location = location; }
-
-	inline Vector3D GetZombieLocation() const { return zombieInfo.location; }
-
-	inline Vector3D GetForwardVector() { return zombieInfo.rotation.GetForwardVector(); }
-
-	void SetZombieRotation(const Rotator& rotation);
-
-	inline Rotator GetZombieRotation() const { return zombieInfo.rotation; }
-
-	void SetNextGrid(const Vector3D& nextLocation);
-
-	bool Waiting();
+	void SetNextGrid(const Vector3D& nextLoc);
 
 	/* 타겟 관련 함수 */
 
-	inline void SetTarget(PlayerInfo* info) { targetInfo = info; }
+	void SetTargetPlayer(std::shared_ptr<Player> player);
 
-	void SetTargetNumber(const int number);
+	std::shared_ptr<Player> GetTargetPlayer() const { return targetPlayer; }
 
-	inline Vector3D GetTargetLocation() { return targetInfo->characterInfo.location; }
+	/* 직렬화 */
 
-	inline Rotator GetTargetRotation() { return targetInfo->characterInfo.rotation; }
-
-	inline EWrestleState GetTargetWrestleState() const { return targetInfo->wrestleState; }
-
-	void SetTargetWrestle();
-
-	inline bool GetTargetSuccessToBlock() const { return targetInfo->isSuccessToBlocking; }
-
-	void RegisterBroadcastCallback(WrestlingBroadcast wb);
+	virtual void SerializeData(std::ostream& stream) override;
 
 protected:
+
+	void SaveInfoToPacket(std::ostream& stream, const int bitType);
 
 	void MaskToInfoBit(const ZIBT bitType);
 
@@ -93,13 +87,17 @@ private:
 
 	ZombieState* zombieState;
 
-	ZombieInfo zombieInfo;
+	EZombieState stateEnum = EZombieState::IDLE;
 
-	unique_ptr<PathManager> pathManager;
+	std::unique_ptr<PathManager> pathManager;
 
-	map<int, PlayerInfo*> targetsMap;
+	Vector3D nextLocation;
 
-	PlayerInfo* targetInfo;
+	std::shared_ptr<Player> targetPlayer;
+
+	std::map<int, std::shared_ptr<Player>> inRangePlayerMap;
+
+	int sendInfoBitMask;
 
 	float speed = 100.f;
 
@@ -108,7 +106,5 @@ private:
 	float waitingTime = 1.25f;
 
 	float elapsedWaitingTime = 0.f;
-
-	WrestlingBroadcast wbCallback = nullptr;
 
 };

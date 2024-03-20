@@ -1,12 +1,12 @@
 #pragma once
 #include "IOCPServer.h"
-#include "CharacterInfo.h"
 #include "Pathfinder/PathFinder.h"
+#include "Enums/PlayerInfoBitType.h"
 #include <unordered_map>
-
-using namespace std;
+#include <memory>
 
 class Zombie;
+class Player;
 
 class GameServer : public IOCPServer
 {
@@ -20,8 +20,6 @@ public:
 
 	void ZombieThread();
 
-	void SyncThread();
-
 protected:
 
 	virtual bool CreateZombieThread();
@@ -30,39 +28,39 @@ protected:
 
 	virtual void HandleDisconnectedClient(SocketInfo* socketInfo) override;
 
-	static void SignUp(SocketInfo*, stringstream&);
+	static void SignUp(SocketInfo*, std::stringstream&);
 
-	static void Login(SocketInfo*, stringstream&);
+	static void Login(SocketInfo*, std::stringstream&);
 
-	static void SpawnOtherPlayers(SocketInfo*, stringstream&);
+	static void SpawnOtherPlayers(SocketInfo*, std::stringstream&);
 
-	static void SaveZombieInfoToPacket(stringstream&);
+	static void SaveZombieInfoToPacket(std::stringstream&);
 
-	static void SynchronizePlayerInfo(SocketInfo*, stringstream&);
+	static void SynchronizePlayerInfo(SocketInfo*, std::stringstream&);
 
-	static void ProcessPlayerInfo(const int playerNumber, PlayerInfo& info);
+	static void ProcessPlayerInfo(std::shared_ptr<Player> player);
 
-	static void CheckInfoBitAndProcess(const int playerNumber, PlayerInfo& info, const PIBTC bitType);
+	static void CheckInfoBitAndProcess(std::shared_ptr<Player> player, const PIBTC bitType);
 
-	static void BroadcastPlyerInputAction(SocketInfo*, stringstream&);
+	static void BroadcastPlayerInputAction(SocketInfo*, std::stringstream&);
 
-	static void ProcessPlayerWrestlingResult(SocketInfo*, stringstream&);
+	static void ProcessPlayerWrestlingResult(SocketInfo*, std::stringstream&);
 
 	static void ProcessPlayerWrestlingStart(const int playerNumber);
 
-	static void Broadcast(stringstream&, const int skipNumber = -1);
+	static void Broadcast(std::stringstream&, const int skipNumber = -1);
 
 private:
 
 	static CRITICAL_SECTION	critsecPlayerInfo;
 	
-	static unordered_map<int, SocketInfo*> playerSocketMap;
+	static std::unordered_map<int, SocketInfo*> playerSocketMap;
 
-	static PlayerInfoSetEx playerInfoSetEx;
+	static std::unordered_map<int, std::string> playerIDMap;
 
-	static unordered_map<int, Zombie> zombieMap;
+	static std::unordered_map<int, std::shared_ptr<Player>> playerMap;
 
-	static ZombieInfoSet zombieInfoSet;
+	static std::unordered_map<int, std::shared_ptr<Zombie>> zombieMap;
 
 	Pathfinder pathfinder;
 

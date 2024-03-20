@@ -1,9 +1,8 @@
 #pragma once
-#include <vector>
 #include "../Structs/Pos.h"
 #include "../Structs/Vector3D.h"
-
-using namespace std;
+#include <vector>
+#include <memory>
 
 class Zombie;
 
@@ -29,17 +28,17 @@ protected:
 
 public:
 
-	inline void SetZombie(Zombie* newZombie) { zombie = newZombie; }
+	inline void SetZombie(std::shared_ptr<Zombie> newZombie) { zombie = newZombie; }
 
-	inline vector<Pos>& GetPathToTarget() { return pathToTarget; }
+	inline std::vector<Pos>& GetPathToTarget() { return pathToTarget; }
 
 private:
 
-	Zombie* zombie;
+	std::shared_ptr<Zombie> zombie;
 
-	vector<Pos> pathToTarget;
+	std::vector<Pos> pathToTarget;
 
-	vector<Pos> pathIndexArr;
+	std::vector<Pos> pathIndexArr;
 
 	int pathIdx;
 

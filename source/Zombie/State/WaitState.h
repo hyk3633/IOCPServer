@@ -1,5 +1,7 @@
 #pragma once
 #include "ZombieState.h"
+#include "../../Enums/ZombieStateEnum.h"
+#include <memory>
 
 class Zombie;
 
@@ -11,9 +13,9 @@ public:
 
 	virtual ~WaitState() = default;
 
-	virtual void ChangeState(Zombie* zombie) override;
+	virtual void ChangeState(std::shared_ptr<Zombie> zombie) override;
 
-	virtual void Update(Zombie* zombie) override;
+	virtual void Update(std::shared_ptr<Zombie> zombie) override;
 
 	virtual EZombieState GetStateEnum() override;
 

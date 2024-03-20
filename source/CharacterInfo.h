@@ -108,7 +108,7 @@ struct CharacterInfo
 {
 	Vector3D location;
 	Vector3D velocity;
-	Rotator rotation;;
+	Rotator rotation;
 
 	CharacterInfo& operator=(const CharacterInfo& info)
 	{
@@ -135,12 +135,7 @@ struct CharacterInfo
 	}
 };
 
-enum class EWrestleState
-{
-	ABLE,
-	WRESTLING,
-	WAITING
-};
+
 
 enum class EPlayerInfoBitTypeClient
 {

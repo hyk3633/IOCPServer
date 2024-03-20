@@ -1,13 +1,17 @@
 #include "GrabState.h"
 #include "BiteState.h"
 #include "BlockedState.h"
-#include "../../CharacterInfo.h"
+#include "../Zombie.h"
+#include "../../Player/Player.h"
 
-void GrabState::ChangeState(Zombie* zombie)
+using std::shared_ptr;
+
+void GrabState::ChangeState(shared_ptr<Zombie> zombie)
 {
-	if (zombie->IsTargetSetted())
+	shared_ptr<Player> targetPlayer = zombie->GetTargetPlayer();
+	if (targetPlayer)
 	{
-		if (zombie->GetTargetSuccessToBlock())
+		if (targetPlayer->GetSuccessToBlocking())
 		{
 			zombie->SetZombieState(BlockedState::GetInstance());
 		}
@@ -18,20 +22,21 @@ void GrabState::ChangeState(Zombie* zombie)
 	}
 }
 
-void GrabState::Update(Zombie* zombie)
+void GrabState::Update(shared_ptr<Zombie> zombie)
 {
-	if (zombie->IsTargetSetted() && zombie->GetTargetWrestleState() == EWrestleState::ABLE)
+	shared_ptr<Player> targetPlayer = zombie->GetTargetPlayer();
+	if (targetPlayer && targetPlayer->GetWrestleState() == EWrestleState::ABLE)
 	{
-		zombie->SetTargetWrestle();
-
-		const Vector3D newLocation = zombie->GetTargetLocation() + (zombie->GetTargetRotation().GetForwardVector() * 70.f);
-		Rotator newRotation = zombie->GetZombieRotation();
-		newRotation.yaw = zombie->GetTargetRotation().yaw + 180.f;
+		targetPlayer->WrestleStateOn();
+		
+		const Vector3D newLocation = targetPlayer->GetLocation() + (targetPlayer->GetRotation().GetForwardVector() * 70.f);
+		Rotator newRotation = zombie->GetRotation();
+		newRotation.yaw = targetPlayer->GetRotation().yaw + 180.f;
 		if (newRotation.yaw > 360.f)
 			newRotation.yaw -= 360.f;
 
-		zombie->SetZombieLocation(newLocation);
-		zombie->SetZombieRotation(newRotation);
+		zombie->SetLocation(newLocation);
+		zombie->SetRotation(newRotation);
 	}
 }
 

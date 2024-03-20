@@ -1,14 +1,17 @@
 #include "GameServer.h"
+#include "Player/Player.h"
 #include "Zombie/Zombie.h"
 #include <sstream>
 #include <chrono>
 
-CRITICAL_SECTION					GameServer::critsecPlayerInfo;
-unordered_map<int, SocketInfo*>		GameServer::playerSocketMap;
-PlayerInfoSetEx						GameServer::playerInfoSetEx;
-int									GameServer::playerCount;
-ZombieInfoSet						GameServer::zombieInfoSet;
-unordered_map<int, Zombie>			GameServer::zombieMap;
+using namespace std;
+
+CRITICAL_SECTION						GameServer::critsecPlayerInfo;
+unordered_map<int, SocketInfo*>			GameServer::playerSocketMap;
+unordered_map<int, string>				GameServer::playerIDMap;
+unordered_map<int, shared_ptr<Player>>	GameServer::playerMap;
+int										GameServer::playerCount;
+unordered_map<int, shared_ptr<Zombie>>	GameServer::zombieMap;
 
 unsigned int WINAPI ZombieThreadStart(LPVOID param)
 {
@@ -37,7 +40,7 @@ bool GameServer::InitializeServer()
 	packetCallbacks[static_cast<int>(EPacketType::LOGIN)] = Login;
 	packetCallbacks[static_cast<int>(EPacketType::SPAWNPLAYER)] = SpawnOtherPlayers;
 	packetCallbacks[static_cast<int>(EPacketType::SYNCHPLAYER)] = SynchronizePlayerInfo;
-	packetCallbacks[static_cast<int>(EPacketType::PLAYERINPUTACTION)] = BroadcastPlyerInputAction;
+	packetCallbacks[static_cast<int>(EPacketType::PLAYERINPUTACTION)] = BroadcastPlayerInputAction;
 	packetCallbacks[static_cast<int>(EPacketType::WRESTLINGRESULT)] = ProcessPlayerWrestlingResult;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
@@ -64,11 +67,10 @@ void GameServer::ZombieThread()
 			sendStream << zombieMap.size() << "\n";
 			for (auto& kv : zombieMap)
 			{
-				kv.second.Update();
+				kv.second->Update();
 				if (packetFlag)
 				{
-					sendStream << kv.first << "\n";
-					sendStream << kv.second.GetZombieInfo() << "\n";
+					kv.second->SerializeData(sendStream);
 				}
 			}
 			if (packetFlag)
@@ -102,21 +104,20 @@ void GameServer::InitializeZombieInfo()
 	//	
 	//}
 
-	ZombieInfo info;
+	Vector3D location{ 800,-1000,97 };
+	Rotator rotation{ 0,120,0 };
 
-	info.location.X = 800;
-	info.location.Y = -1000;
-	info.location.Z = 97;
-	info.rotation.yaw = 120;
+	zombieMap[0] = make_shared<Zombie>(0);
+	zombieMap[0]->SetLocation(location);
+	zombieMap[0]->SetRotation(rotation);
 
-	zombieMap[0].SetZombieInfo(info);
-	zombieMap[0].RegisterBroadcastCallback(ProcessPlayerWrestlingStart);
+	location.X = 1100;
+	location.Y = 900;
+	rotation.yaw = -120;
 
-	info.location.X = 1100;
-	info.location.Y = 900;
-	info.rotation.yaw = -120;
-
-	//zombieMap[1].SetZombieInfo(info);
+	//zombieMap[1].SetNumber(1);
+	//zombieMap[1].SetLocation(location);
+	//zombieMap[1].SetRotation(rotation);
 }
 
 void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
@@ -124,13 +125,13 @@ void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::PLAYERDISCONNECTED) << "\n";
 	sendStream << socketInfo->number << "\n";
-	sendStream << playerInfoSetEx.playerIDMap[socketInfo->number] << "\n";
 
-	cout << "[Log] : " << socketInfo->number << "번 클라이언트 (ID : " << playerInfoSetEx.playerIDMap[socketInfo->number]  << ") 접속 종료\n";
+	cout << "[Log] : " << socketInfo->number << "번 클라이언트 (ID : " << playerIDMap[socketInfo->number]  << ") 접속 종료\n";
 
 	playerSocketMap.erase(socketInfo->number);					
-	playerInfoSetEx.playerIDMap.erase(socketInfo->number);		
-	playerInfoSetEx.characterInfoMap.erase(socketInfo->number);	
+	playerIDMap.erase(socketInfo->number);		
+	playerMap.erase(socketInfo->number);
+	// 참조 카운트 확인
 
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream, socketInfo->number);
@@ -162,7 +163,7 @@ void GameServer::Login(SocketInfo* socketInfo, stringstream& recvStream)
 	cout << "[Log] : ID " << id << " 로그인 요청 -> 결과(" << isLoginSuccess << ")\n";
 
 	EnterCriticalSection(&critsecPlayerInfo);
-	playerInfoSetEx.playerIDMap[playerCount] = id;
+	playerIDMap[playerCount] = id;
 	playerSocketMap[playerCount] = socketInfo;
 	socketInfo->number = playerCount;
 	playerCount++;
@@ -178,19 +179,12 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 	// 기존 플레이어들의 정보를 방금 접속한 플레이어에게 보낼 스트림에 저장
 	stringstream otherPlayersInfoStream;
 	otherPlayersInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
-	playerInfoSetEx.OutputStreamWithID(otherPlayersInfoStream);
-
-	// 방금 접속한 플레이어의 정보 추가
-	recvStream >> playerInfoSetEx.characterInfoMap[socketInfo->number];
-
-	// 방금 접속한 플레이어의 정보를 기존 플레이어들에게 보낼 스트림에 저장 
-	PlayerInfoSetEx newPlayerInfoSet;
-	newPlayerInfoSet.playerIDMap[socketInfo->number] = playerInfoSetEx.playerIDMap[socketInfo->number];
-	newPlayerInfoSet.characterInfoMap[socketInfo->number] = playerInfoSetEx.characterInfoMap[socketInfo->number];
-
-	stringstream newPlayerInfoStream;
-	newPlayerInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
-	newPlayerInfoSet.OutputStreamWithID(newPlayerInfoStream);
+	otherPlayersInfoStream << playerMap.size() << "\n";				// 플레이어 수
+	for (auto& p : playerMap)
+	{
+		otherPlayersInfoStream << playerIDMap[p.first] << "\n";		// 플레이어 아이디
+		p.second->SerializeData(otherPlayersInfoStream);			// 플레이어 정보
+	}
 
 	// 방금 접속한 플레이어에게 기존의 플레이어들 정보 전송
 	Send(socketInfo, otherPlayersInfoStream);
@@ -199,6 +193,18 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 	stringstream zombieInfoStream;
 	SaveZombieInfoToPacket(zombieInfoStream);
 	Send(socketInfo, zombieInfoStream);
+
+	playerMap[socketInfo->number] = make_shared<Player>(socketInfo->number);
+	shared_ptr<Player> playerPtr = playerMap[socketInfo->number];
+	playerPtr->RegisterBroadcastCallback(ProcessPlayerWrestlingStart);
+	// 방금 접속한 플레이어의 정보를 역직렬화
+	playerPtr->DeserializeData(recvStream);
+
+	// 방금 접속한 플레이어의 정보를 기존 플레이어들에게 보낼 스트림에 저장 
+	stringstream newPlayerInfoStream;
+	newPlayerInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
+	newPlayerInfoStream << playerIDMap[socketInfo->number] << "\n";
+	playerPtr->SerializeData(newPlayerInfoStream);
 
 	// 기존의 플레이어들에게 방금 접속한 플레이어 정보 전송
 	Broadcast(newPlayerInfoStream, socketInfo->number);
@@ -212,77 +218,73 @@ void GameServer::SaveZombieInfoToPacket(stringstream& sendStream)
 	sendStream << zombieMap.size() << "\n";
 	for (auto& kv : zombieMap)
 	{
-		kv.second.AllZombieInfoBitOn();
-		sendStream << kv.first << "\n";
-		sendStream << kv.second.GetZombieInfo() << "\n";
+		kv.second->AllZombieInfoBitOn();
+		kv.second->SerializeData(sendStream);
 	}
 }
 
 void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	EnterCriticalSection(&critsecPlayerInfo);
-	recvStream >> playerInfoSetEx.characterInfoMap[socketInfo->number];
+	playerMap[socketInfo->number]->DeserializeData(recvStream);
+	playerMap[socketInfo->number]->DeserializeExtraData(recvStream);
 	LeaveCriticalSection(&critsecPlayerInfo);
 
-	ProcessPlayerInfo(socketInfo->number, playerInfoSetEx.characterInfoMap[socketInfo->number]);
+	ProcessPlayerInfo(playerMap[socketInfo->number]);
+	playerMap[socketInfo->number]->Waiting();
 
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";
-	sendStream << playerInfoSetEx << "\n";
+	for (auto& kv : playerMap)
+	{
+		kv.second->SerializeData(sendStream);
+		kv.second->SerializeExtraData(sendStream);
+	}
 	Send(socketInfo, sendStream);
 }
 
-void GameServer::ProcessPlayerInfo(const int playerNumber, PlayerInfo& info)
+void GameServer::ProcessPlayerInfo(shared_ptr<Player> player)
 {
+	const int recvInfoBitMask = player->GetRecvInfoBitMask();
 	const int bitMax = static_cast<int>(PIBTC::MAX);
 	for (int bit = 0; bit < bitMax; bit++)
 	{
-		if (info.recvInfoBitMask & (1 << bit))
+		if (recvInfoBitMask & (1 << bit))
 		{
-			CheckInfoBitAndProcess(playerNumber, info, static_cast<PIBTC>(bit));
-		}
-	}
-
-	if (info.wrestleState == EWrestleState::WAITING)
-	{
-		info.wrestleWaitElapsedTime += 0.016f;
-		if (info.wrestleWaitElapsedTime >= info.wrestleWaitTime)
-		{
-			info.wrestleWaitElapsedTime = 0.f;
-			info.wrestleState = EWrestleState::ABLE;
+			CheckInfoBitAndProcess(player, static_cast<PIBTC>(bit));
 		}
 	}
 }
 
-void GameServer::CheckInfoBitAndProcess(const int playerNumber, PlayerInfo& info, const PIBTC bitType)
+void GameServer::CheckInfoBitAndProcess(shared_ptr<Player> player, const PIBTC bitType)
 {
 	switch (bitType)
 	{
 		case PIBTC::ZombiesInRange:
 		{
-			for (int i = 0; i < info.zombiesInRange.size(); i++)
+			for (int number : player->GetZombiesInRange())
 			{
-				zombieMap[i].AddToTargets(playerNumber, &info);
+				zombieMap[number]->AddPlayerToInRangeMap(player);
 			}
 			break;
 		}
 		case PIBTC::ZombiesOutRange:
 		{
-			for (int i = 0; i < info.zombiesOutRange.size(); i++)
+			for (int number : player->GetZombiesOutRange())
 			{
-				zombieMap[i].RemoveTargets(playerNumber);
+				zombieMap[number]->RemoveInRangePlayer(player->GetNumber());
 			}
 			break;
 		}
 		case PIBTC::ZombieAttackResult:
 		{
-			zombieMap[info.zombieNumberAttackedMe].ChangeState();
+			zombieMap[player->GetZombieNumberAttackedBy()]->ChangeState();
 			break;
 		}
 	}
 }
 
-void GameServer::BroadcastPlyerInputAction(SocketInfo* socketInfo, stringstream& recvStream)
+void GameServer::BroadcastPlayerInputAction(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	int inputType = 0;
 	recvStream >> inputType;
@@ -302,11 +304,11 @@ void GameServer::ProcessPlayerWrestlingResult(SocketInfo* socketInfo, stringstre
 	bool wrestlingResult;
 	recvStream >> wrestlingResult;
 
-	PlayerInfo& info = playerInfoSetEx.characterInfoMap[socketInfo->number];
-	info.wrestleState = EWrestleState::WAITING;
-	info.isSuccessToBlocking = wrestlingResult;
+	shared_ptr<Player> player = playerMap[socketInfo->number];
+	player->WrestlStateOff();
+	player->SetSuccessToBlocking(wrestlingResult);
 
-	zombieMap[info.zombieNumberAttackedMe].ChangeState();
+	zombieMap[player->GetZombieNumberWrestleWith()]->ChangeState();
 
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::WRESTLINGRESULT) << "\n";

@@ -1,32 +1,48 @@
 #include "Character.h"
 
-Character::Character()
+using namespace std;
+
+Character::Character(const int num) : number(num)
 {
+
 }
 
 Character::~Character()
 {
+
 }
 
 Vector3D Character::GetForwardVector()
 {
-	return Vector3D();
+	return rotation.GetForwardVector();
 }
 
-void Character::SetLocation(const Vector3D& location)
+void Character::SetLocation(const Vector3D& loc)
 {
+	location = loc;
 }
 
-Vector3D Character::GetLocation() const
+void Character::SetRotation(const Rotator& rot)
 {
-	return Vector3D();
+	rotation = rot;
 }
 
-void Character::SetRotation(const Rotator& rotation)
+void Character::SerializeLocation(ostream& stream)
 {
+	stream << location;
 }
 
-Rotator Character::GetRotation() const
+void Character::DeserializeLocation(istream& stream)
 {
-	return Rotator();
+	stream >> location;
+}
+
+void Character::SerializeRotation(ostream& stream)
+{
+	stream << rotation;
+}
+
+void Character::DeserializeRotation(istream& stream)
+{
+	stream >> rotation;
 }

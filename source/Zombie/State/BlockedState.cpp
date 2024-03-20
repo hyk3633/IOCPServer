@@ -1,12 +1,15 @@
 #include "BlockedState.h"
 #include "WaitState.h"
+#include "../Zombie.h"
 
-void BlockedState::ChangeState(Zombie* zombie)
+using std::shared_ptr;
+
+void BlockedState::ChangeState(shared_ptr<Zombie> zombie)
 {
 	zombie->SetZombieState(WaitState::GetInstance());
 }
 
-void BlockedState::Update(Zombie* zombie)
+void BlockedState::Update(shared_ptr<Zombie> zombie)
 {
 	if (zombie->Waiting())
 	{

@@ -1,15 +1,18 @@
 #include "Zombie.h"
 #include "PathManager.h"
 #include "State/IdleState.h"
+#include "../Player/Player.h"
 #include "../Structs/Vector3D.h"
 #include "../Structs/Rotator.h"
 #include "../Math/Math.h"
 #include <iostream>
 
-Zombie::Zombie() : zombieState(IdleState::GetInstance()), targetInfo(nullptr)
+using namespace std;
+
+Zombie::Zombie(const int num) : Character(num), zombieState(IdleState::GetInstance())
 {
 	pathManager = make_unique<PathManager>();
-	pathManager->SetZombie(this);
+	pathManager->SetZombie(shared_ptr<Zombie>(this));
 }
 
 Zombie::~Zombie()
@@ -18,50 +21,50 @@ Zombie::~Zombie()
 
 void Zombie::ChangeState()
 {
-	zombieState->ChangeState(this);
+	zombieState->ChangeState(shared_from_this());
 	elapsedWaitingTime = 0.f;
 }
 
 void Zombie::Update()
 {
-	zombieState->Update(this);
+	zombieState->Update(shared_from_this());
 }
 
-void Zombie::AddToTargets(const int playerNumber, PlayerInfo* playerInfo)
+void Zombie::AddPlayerToInRangeMap(shared_ptr<Player> player)
 {
-	targetsMap[playerNumber] = playerInfo;
+	inRangePlayerMap[player->GetNumber()] = player;
 }
 
-void Zombie::RemoveTargets(const int playerNumber)
+void Zombie::RemoveInRangePlayer(const int playerNumber)
 {
-	if (targetsMap.find(playerNumber) != targetsMap.end())
+	if (inRangePlayerMap.find(playerNumber) != inRangePlayerMap.end())
 	{
-		targetsMap.erase(playerNumber);
+		inRangePlayerMap.erase(playerNumber);
 	}
 }
 
 void Zombie::AllZombieInfoBitOn()
 {
-	zombieInfo.sendInfoBitMask = (1 << static_cast<int>(ZIBT::MAX)) - 1;
+	sendInfoBitMask = (1 << static_cast<int>(ZIBT::MAX)) - 1;
 }
 
 void Zombie::SetZombieState(ZombieState* newState)
 {
 	zombieState = newState;
-	zombieInfo.state = zombieState->GetStateEnum();
+	stateEnum = zombieState->GetStateEnum();
 	MaskToInfoBit(ZIBT::State);
 }
 
 bool Zombie::CheckNearestPlayer()
 {
-	if (targetsMap.empty()) 
+	if (inRangePlayerMap.empty())
 		return false;
 	float minDist = 10000.f;
 	int nearestNumber = -1;
-	for (auto& kv : targetsMap)
+	for (auto& kv : inRangePlayerMap)
 	{
-		PlayerInfo* info = kv.second;
-		Vector3D toTarget = info->characterInfo.location - GetZombieLocation();
+		shared_ptr<Player> player = kv.second;
+		Vector3D toTarget = player->GetLocation() - GetLocation();
 		const float angleDegree = RadiansToDegrees(Acos(DotProduct(toTarget.Normalize(), GetForwardVector())));
 		if (angleDegree < 60.f)
 		{
@@ -79,16 +82,14 @@ bool Zombie::CheckNearestPlayer()
 	}
 	else
 	{
-		SetTargetNumber(nearestNumber);
-		SetTarget(targetsMap[nearestNumber]);
+		SetTargetPlayer(inRangePlayerMap[nearestNumber]);
 		return true;
 	}
 }
 
-bool Zombie::IsTargetSetted()
+bool Zombie::IsTargetSet()
 {
-	if (targetInfo) return true;
-	else return false;
+	return targetPlayer != nullptr;
 }
 
 void Zombie::ProcessMovement()
@@ -98,7 +99,7 @@ void Zombie::ProcessMovement()
 
 void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
 {
-	Vector3D& location = zombieInfo.location;
+	Vector3D location = GetLocation();
 	const float maxStep = speed * interval;
 	if ((dest - location).GetMagnitude() > maxStep)
 	{
@@ -109,18 +110,24 @@ void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
 		location = dest;
 	}
 	location.Truncate();
+	SetLocation(location);
 	MaskToInfoBit(ZIBT::Location);
 }
 
-void Zombie::SetZombieRotation(const Rotator& rotation)
+PathManager* Zombie::GetPathManager()
 {
-	zombieInfo.rotation = rotation;
+	return pathManager.get();
+}
+
+void Zombie::SetRotation(const Rotator& rotation)
+{
+	Character::SetRotation(rotation);
 	MaskToInfoBit(ZIBT::Rotation);
 }
 
-void Zombie::SetNextGrid(const Vector3D& nextLocation)
+void Zombie::SetNextGrid(const Vector3D& nextLoc)
 {
-	zombieInfo.nextLocation = nextLocation;
+	nextLocation = nextLoc;
 	MaskToInfoBit(ZIBT::NextLocation);
 }
 
@@ -135,24 +142,62 @@ bool Zombie::Waiting()
 	return false;
 }
 
-void Zombie::SetTargetNumber(const int number)
+void Zombie::SetTargetPlayer(shared_ptr<Player> player)
 {
-	zombieInfo.targetNumber = number;
+	targetPlayer = player;
+	targetPlayer->SetZombieNumberWrestleWith(GetNumber());
 	MaskToInfoBit(ZIBT::TargetNumber);
 }
 
-void Zombie::SetTargetWrestle()
+void Zombie::SerializeData(ostream& stream)
 {
-	targetInfo->wrestleState = EWrestleState::WRESTLING;
-	wbCallback(zombieInfo.targetNumber);
+	stream << GetNumber() << "\n";
+	stream << sendInfoBitMask << "\n";
+	const int bitMax = static_cast<int>(ZIBT::MAX);
+	for (int bit = 0; bit < bitMax; bit++)
+	{
+		if (sendInfoBitMask & (1 << bit))
+		{
+			SaveInfoToPacket(stream, bit);
+			sendInfoBitMask &= ~(1 << bit);
+		}
+	}
 }
 
-void Zombie::RegisterBroadcastCallback(WrestlingBroadcast wb)
+void Zombie::SaveInfoToPacket(ostream& stream, const int bitType)
 {
-	wbCallback = wb;
+	ZIBT type = static_cast<ZIBT>(bitType);
+	switch (type)
+	{
+		case ZIBT::Location:
+		{
+			SerializeLocation(stream);
+			break;
+		}
+		case ZIBT::Rotation:
+		{
+			SerializeRotation(stream);
+			break;
+		}
+		case ZIBT::State:
+		{
+			stream << static_cast<int>(stateEnum) << "\n";
+			break;
+		}
+		case ZIBT::TargetNumber:
+		{
+			stream << GetNumber() << "\n";
+			break;
+		}
+		case ZIBT::NextLocation:
+		{
+			stream << nextLocation;
+			break;
+		}
+	}
 }
 
 void Zombie::MaskToInfoBit(const ZIBT bitType)
 {
-	zombieInfo.sendInfoBitMask |= (1 << static_cast<int>(bitType));
+	sendInfoBitMask |= (1 << static_cast<int>(bitType));
 }

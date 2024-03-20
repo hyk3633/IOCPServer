@@ -4,47 +4,53 @@
 #include "AttackState.h"
 #include "GrabState.h"
 #include "../Zombie.h"
+#include "../../Player/Player.h"
 #include "../../Structs/Vector3D.h"
-#include "../../Define.h"
 
-void ChaseState::ChangeState(Zombie* zombie)
+using std::shared_ptr;
+
+void ChaseState::ChangeState(shared_ptr<Zombie> zombie)
 {
-	const float distance = zombie->GetZombieLocation().GetDistance(zombie->GetTargetLocation());
-
-	if (distance <= 100.f)
+	shared_ptr<Player> targetPlayer = zombie->GetTargetPlayer();
+	if (zombie && targetPlayer)
 	{
-		if (zombie->GetTargetWrestleState() == EWrestleState::ABLE)
-		{
-			zombie->SetZombieState(GrabState::GetInstance());
-		}
-		else if (zombie->GetTargetWrestleState() == EWrestleState::WAITING)
-		{
-			zombie->SetZombieState(AttackState::GetInstance());
-		}
-		else
-		{
-			zombie->SetZombieState(WaitState::GetInstance());
-		}
-	}
-	else
-	{
-		zombie->SetZombieState(IdleState::GetInstance());
-	}
-}
-
-void ChaseState::Update(Zombie* zombie)
-{
-	if (zombie && zombie->IsTargetSetted())
-	{
-		const float distance = zombie->GetZombieLocation().GetDistance(zombie->GetTargetLocation());
-
+		const float distance = zombie->GetLocation().GetDistance(targetPlayer->GetLocation());
 		if (distance <= 100.f)
 		{
-			if (zombie->GetTargetWrestleState() == EWrestleState::ABLE)
+			if (targetPlayer->GetWrestleState() == EWrestleState::ABLE)
 			{
 				zombie->SetZombieState(GrabState::GetInstance());
 			}
-			else if (zombie->GetTargetWrestleState() == EWrestleState::WAITING)
+			else if (targetPlayer->GetWrestleState() == EWrestleState::WAITING)
+			{
+				zombie->SetZombieState(AttackState::GetInstance());
+			}
+			else
+			{
+				zombie->SetZombieState(WaitState::GetInstance());
+			}
+		}
+		else
+		{
+			zombie->SetZombieState(IdleState::GetInstance());
+		}
+	}
+	
+}
+
+void ChaseState::Update(shared_ptr<Zombie> zombie)
+{
+	shared_ptr<Player> targetPlayer = zombie->GetTargetPlayer();
+	if (zombie && targetPlayer)
+	{
+		const float distance = zombie->GetLocation().GetDistance(targetPlayer->GetLocation());
+		if (distance <= 100.f)
+		{
+			if (targetPlayer->GetWrestleState() == EWrestleState::ABLE)
+			{
+				zombie->SetZombieState(GrabState::GetInstance());
+			}
+			else if (targetPlayer->GetWrestleState() == EWrestleState::WAITING)
 			{
 				zombie->SetZombieState(AttackState::GetInstance());
 			}

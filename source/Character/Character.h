@@ -1,24 +1,37 @@
 #pragma once
 #include "../Structs/Vector3D.h"
 #include "../Structs/Rotator.h"
+#include <memory>
 
 class Character
 {
 public:
 
-	Character();
+	Character(const int num);
 
-	~Character();
+	virtual ~Character();
+
+	inline int GetNumber() const { return number; }
 
 	Vector3D GetForwardVector();
 
-	void SetLocation(const Vector3D& location);
+	void SetLocation(const Vector3D& loc);
 
-	Vector3D GetLocation() const;
+	inline Vector3D GetLocation() const { return location; }
 
-	void SetRotation(const Rotator& rotation);
+	void SetRotation(const Rotator& rot);
 
-	Rotator GetRotation() const;
+	inline Rotator GetRotation() const { return rotation; }
+
+	void SerializeLocation(std::ostream& stream);
+
+	void DeserializeLocation(std::istream& stream);
+
+	void SerializeRotation(std::ostream& stream);
+
+	void DeserializeRotation(std::istream& stream);
+
+	virtual void SerializeData(std::ostream& stream) = 0;
 
 protected:
 
@@ -26,6 +39,10 @@ protected:
 
 private:
 
+	int number;
 
+	Vector3D location;
+
+	Rotator rotation;
 
 };

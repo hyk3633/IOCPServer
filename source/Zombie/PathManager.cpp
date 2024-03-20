@@ -1,8 +1,11 @@
 #include "PathManager.h"
 #include "Zombie.h"
 #include "State/ZombieState.h"
+#include "../Player/Player.h"
 #include "../Pathfinder/PathFinder.h"
 #include "../Structs/Rotator.h"
+
+using namespace std;
 
 PathManager::PathManager()
 {
@@ -17,7 +20,7 @@ void PathManager::ProcessMovement()
 	if (WhetherRecalculPath())
 	{
 		Pathfinder::GetPathfinder()->ClearPathCost(pathIndexArr);
-		Pathfinder::GetPathfinder()->FindPath(zombie->GetZombieLocation(), zombie->GetTargetLocation(), pathToTarget, pathIndexArr);
+		Pathfinder::GetPathfinder()->FindPath(zombie->GetLocation(), zombie->GetTargetPlayer()->GetLocation(), pathToTarget, pathIndexArr);
 		InitializePathStatus();
 	}
 	FollowPath();
@@ -27,14 +30,14 @@ void PathManager::InitializePathStatus()
 {
 	pathIdx = 0;
 	Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx], false);
-	nextPoint = Vector3D(pathToTarget[1].x, pathToTarget[1].y, zombie->GetZombieLocation().Z);
-	nextDirection = (nextPoint - zombie->GetZombieLocation()).Normalize();
+	nextPoint = Vector3D(pathToTarget[1].x, pathToTarget[1].y, zombie->GetLocation().Z);
+	nextDirection = (nextPoint - zombie->GetLocation()).Normalize();
 	zombie->SetNextGrid(nextPoint);
 }
 
 void PathManager::FollowPath()
 {
-	const float dist = nextPoint.GetDistance(zombie->GetZombieLocation());
+	const float dist = nextPoint.GetDistance(zombie->GetLocation());
 	if (dist <= GRID_DIST)
 	{
 		if (pathIdx < pathToTarget.size())
@@ -43,9 +46,9 @@ void PathManager::FollowPath()
 			if (pathIdx + 1 < pathToTarget.size()) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx + 1], false);
 
 			pathIdx++;
-			nextPoint = Vector3D(pathToTarget[pathIdx].x, pathToTarget[pathIdx].y, zombie->GetZombieLocation().Z);
-			nextDirection = (nextPoint - zombie->GetZombieLocation()).Normalize();
-			zombie->SetZombieRotation(nextDirection.Rotation());
+			nextPoint = Vector3D(pathToTarget[pathIdx].x, pathToTarget[pathIdx].y, zombie->GetLocation().Z);
+			nextDirection = (nextPoint - zombie->GetLocation()).Normalize();
+			zombie->SetRotation(nextDirection.Rotation());
 			zombie->SetNextGrid(nextPoint);
 		}
 	}
@@ -61,7 +64,7 @@ bool PathManager::WhetherRecalculPath()
 	else
 	{
 		// 타겟 위치와 경로의 마지막 위치 간 거리가 100 이상이면 경로 다시 계산
-		Vector3D targetLocation = zombie->GetTargetLocation();
+		Vector3D targetLocation = zombie->GetTargetPlayer()->GetLocation();
 		const float destToTarget = targetLocation.GetDistance(Vector3D(pathToTarget.back().x, pathToTarget.back().y, targetLocation.Z));
 		if (destToTarget > 100.f)
 		{
