@@ -1,13 +1,15 @@
 #include "GameServer.h"
+#include "Item/ItemManager.h"
 #include "Player/Player.h"
 #include "Zombie/Zombie.h"
 #include <sstream>
 #include <chrono>
-
+#include <iostream>
 using namespace std;
 
 CRITICAL_SECTION						GameServer::critsecPlayerInfo;
 unordered_map<int, SocketInfo*>			GameServer::playerSocketMap;
+unique_ptr<ItemManager>					GameServer::itemManager;
 unordered_map<int, string>				GameServer::playerIDMap;
 unordered_map<int, shared_ptr<Player>>	GameServer::playerMap;
 int										GameServer::playerCount;
@@ -35,17 +37,18 @@ bool GameServer::InitializeServer()
 	bool result = IOCPServer::InitializeServer();
 	if (!result) return result;
 
+	itemManager = make_unique<ItemManager>();
+
 	packetCallbacks = vector<void(*)(SocketInfo*, stringstream&)>(static_cast<int>(EPacketType::PACKETTYPE_MAX));
-	packetCallbacks[static_cast<int>(EPacketType::SIGNUP)] = SignUp;
-	packetCallbacks[static_cast<int>(EPacketType::LOGIN)] = Login;
-	packetCallbacks[static_cast<int>(EPacketType::SPAWNPLAYER)] = SpawnOtherPlayers;
-	packetCallbacks[static_cast<int>(EPacketType::SYNCHPLAYER)] = SynchronizePlayerInfo;
-	packetCallbacks[static_cast<int>(EPacketType::PLAYERINPUTACTION)] = BroadcastPlayerInputAction;
-	packetCallbacks[static_cast<int>(EPacketType::WRESTLINGRESULT)] = ProcessPlayerWrestlingResult;
+	packetCallbacks[static_cast<int>(EPacketType::SIGNUP)]				= SignUp;
+	packetCallbacks[static_cast<int>(EPacketType::LOGIN)]				= Login;
+	packetCallbacks[static_cast<int>(EPacketType::SPAWNPLAYER)]			= SpawnOtherPlayers;
+	packetCallbacks[static_cast<int>(EPacketType::SYNCHPLAYER)]			= SynchronizePlayerInfo;
+	packetCallbacks[static_cast<int>(EPacketType::PLAYERINPUTACTION)]	= BroadcastPlayerInputAction;
+	packetCallbacks[static_cast<int>(EPacketType::WRESTLINGRESULT)]		= ProcessPlayerWrestlingResult;
+	packetCallbacks[static_cast<int>(EPacketType::SYNCHITEM)]			= SynchronizeItemInfo;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
-
-	pathfinder.InitializePathFinder();
 
 	return true;
 }
@@ -194,6 +197,11 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 	SaveZombieInfoToPacket(zombieInfoStream);
 	Send(socketInfo, zombieInfoStream);
 
+	// 방금 접속한 플레이어에게 아이템 정보 동기화
+	stringstream itemInfoStream;
+	SaveItemInfoToPacket(itemInfoStream);
+	Send(socketInfo, itemInfoStream);
+
 	playerMap[socketInfo->number] = make_shared<Player>(socketInfo->number);
 	shared_ptr<Player> playerPtr = playerMap[socketInfo->number];
 	playerPtr->RegisterBroadcastCallback(ProcessPlayerWrestlingStart);
@@ -221,6 +229,12 @@ void GameServer::SaveZombieInfoToPacket(stringstream& sendStream)
 		kv.second->AllZombieInfoBitOn();
 		kv.second->SerializeData(sendStream);
 	}
+}
+
+void GameServer::SaveItemInfoToPacket(std::stringstream& sendStream)
+{
+	sendStream << static_cast<int>(EPacketType::SYNCHITEM) << "\n";
+	itemManager->SaveItemInfoToPacket(sendStream);
 }
 
 void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& recvStream)
@@ -329,6 +343,25 @@ void GameServer::ProcessPlayerWrestlingStart(const int playerNumber)
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream);
 	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::SynchronizeItemInfo(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	int itemNumber;
+	recvStream >> itemNumber;
+
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::DESTROYITEM) << "\n";
+	sendStream << itemNumber << "\n";
+	
+	EnterCriticalSection(&critsecPlayerInfo);
+	Broadcast(sendStream, socketInfo->number);
+	LeaveCriticalSection(&critsecPlayerInfo);
+
+	sendStream.str("");
+	sendStream << static_cast<int>(EPacketType::PICKUPITEM) << "\n";
+	sendStream << itemNumber << "\n";
+	Send(socketInfo, sendStream);
 }
 
 void GameServer::Broadcast(stringstream& sendStream, const int skipNumber)

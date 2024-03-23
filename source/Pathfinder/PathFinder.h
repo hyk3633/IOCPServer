@@ -55,8 +55,6 @@ public:
 		return &pathfinder;
 	}
 
-	void InitializePathFinder();
-
 	void FindPath(const Vector3D& start, const Vector3D& dest, vector<Pos>& path, vector<Pos>& pathIndexArr);
 
 	void SetGridPassability(const Pos& pos, const bool isPassable);
@@ -64,6 +62,8 @@ public:
 	void ClearPathCost(const vector<Pos>& pathIndexArr);
 
 protected:
+
+	void InitializePathFinder();
 
 	bool CanGo(const int y, const int x);
 

@@ -1,10 +1,10 @@
 #pragma once
 #include "IOCPServer.h"
-#include "Pathfinder/PathFinder.h"
 #include "Enums/PlayerInfoBitType.h"
 #include <unordered_map>
 #include <memory>
 
+class ItemManager;
 class Zombie;
 class Player;
 
@@ -36,6 +36,8 @@ protected:
 
 	static void SaveZombieInfoToPacket(std::stringstream&);
 
+	static void SaveItemInfoToPacket(std::stringstream&);
+
 	static void SynchronizePlayerInfo(SocketInfo*, std::stringstream&);
 
 	static void ProcessPlayerInfo(std::shared_ptr<Player> player);
@@ -48,6 +50,8 @@ protected:
 
 	static void ProcessPlayerWrestlingStart(const int playerNumber);
 
+	static void SynchronizeItemInfo(SocketInfo*, std::stringstream&);
+
 	static void Broadcast(std::stringstream&, const int skipNumber = -1);
 
 private:
@@ -56,13 +60,13 @@ private:
 	
 	static std::unordered_map<int, SocketInfo*> playerSocketMap;
 
+	static std::unique_ptr<ItemManager> itemManager;
+
 	static std::unordered_map<int, std::string> playerIDMap;
 
 	static std::unordered_map<int, std::shared_ptr<Player>> playerMap;
 
 	static std::unordered_map<int, std::shared_ptr<Zombie>> zombieMap;
-
-	Pathfinder pathfinder;
 
 	HANDLE* zombieThread;
 

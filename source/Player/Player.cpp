@@ -1,5 +1,5 @@
 #include "Player.h"
-
+#include <iostream>
 using namespace std;
 
 Player::Player(const int num) : Character(num)
