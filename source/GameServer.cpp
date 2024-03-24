@@ -47,6 +47,8 @@ bool GameServer::InitializeServer()
 	packetCallbacks[static_cast<int>(EPacketType::PLAYERINPUTACTION)]	= BroadcastPlayerInputAction;
 	packetCallbacks[static_cast<int>(EPacketType::WRESTLINGRESULT)]		= ProcessPlayerWrestlingResult;
 	packetCallbacks[static_cast<int>(EPacketType::SYNCHITEM)]			= SynchronizeItemInfo;
+	packetCallbacks[static_cast<int>(EPacketType::HITPLAYER)]			= HitPlayer;
+	packetCallbacks[static_cast<int>(EPacketType::HITZOMBIE)]			= HitZombie;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
@@ -65,18 +67,20 @@ void GameServer::ZombieThread()
 		}
 		if (playerSocketMap.size())
 		{
+			bool sendFlag = false;
 			stringstream sendStream;
 			sendStream << static_cast<int>(EPacketType::SYNCHZOMBIE) << "\n";
 			sendStream << zombieMap.size() << "\n";
 			for (auto& kv : zombieMap)
 			{
 				kv.second->Update();
-				if (packetFlag)
+				if (packetFlag && kv.second->GetSendInfoBit())
 				{
 					kv.second->SerializeData(sendStream);
+					sendFlag = true;
 				}
 			}
-			if (packetFlag)
+			if (packetFlag && sendFlag)
 			{
 				EnterCriticalSection(&critsecPlayerInfo);
 				Broadcast(sendStream);
@@ -211,6 +215,7 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 	// 방금 접속한 플레이어의 정보를 기존 플레이어들에게 보낼 스트림에 저장 
 	stringstream newPlayerInfoStream;
 	newPlayerInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
+	newPlayerInfoStream << 1 << "\n";
 	newPlayerInfoStream << playerIDMap[socketInfo->number] << "\n";
 	playerPtr->SerializeData(newPlayerInfoStream);
 
@@ -249,6 +254,7 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";
+	sendStream << playerMap.size() << "\n";
 	for (auto& kv : playerMap)
 	{
 		kv.second->SerializeData(sendStream);
@@ -353,6 +359,8 @@ void GameServer::SynchronizeItemInfo(SocketInfo* socketInfo, stringstream& recvS
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::DESTROYITEM) << "\n";
 	sendStream << itemNumber << "\n";
+
+	itemManager->SetItemStateToDeactivated(itemNumber);
 	
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream, socketInfo->number);
@@ -371,4 +379,17 @@ void GameServer::Broadcast(stringstream& sendStream, const int skipNumber)
 		if (skipNumber != -1 && info.first == skipNumber) continue;
 		Send(info.second, sendStream);
 	}
+}
+
+void GameServer::HitPlayer(SocketInfo* socketInfo, stringstream& recvStream)
+{
+
+}
+
+void GameServer::HitZombie(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	int zombieNumber = 0;
+	recvStream >> zombieNumber;
+	cout << "플레이어 " << socketInfo->number << "가 좀비 " << zombieNumber << "를 때렸습니다." << "\n";
+	// 좀비 체력 처리
 }

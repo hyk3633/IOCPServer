@@ -65,7 +65,7 @@ private:
 
 	string playerID;
 
-	int recvInfoBitMask;
+	int recvInfoBitMask = 0;
 
 	Vector3D velocity;
 

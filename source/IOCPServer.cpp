@@ -104,6 +104,8 @@ void IOCPServer::StartServer()
 		return;
 	}
 
+	InitializeCriticalSection(&critsecWork);
+
 	// Worker thread 생성
 	if (!CreateWorkerThreads())
 	{
@@ -153,7 +155,9 @@ void IOCPServer::WorkerThread()
 	while (1)
 	{
 		// IO 완료된 작업 꺼내오기
+		EnterCriticalSection(&critsecWork);
 		result = GetQueuedCompletionStatus(iocpHandle, &recvBytes, (PULONG_PTR)&completionKey, (LPOVERLAPPED*)&recvSocketInfo, INFINITE);
+		LeaveCriticalSection(&critsecWork);
 		if (!result || !recvBytes)
 		{
 			HandleDisconnectedClient(recvSocketInfo);

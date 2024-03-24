@@ -40,9 +40,9 @@ void PathManager::FollowPath()
 	const float dist = nextPoint.GetDistance(zombie->GetLocation());
 	if (dist <= GRID_DIST)
 	{
-		if (pathIdx < pathToTarget.size())
+		if (pathIdx > 0) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx - 1], true);
+		if (pathIdx + 1 < pathToTarget.size())
 		{
-			if (pathIdx > 0) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx - 1], true);
 			if (pathIdx + 1 < pathToTarget.size()) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx + 1], false);
 
 			pathIdx++;

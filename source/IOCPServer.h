@@ -50,6 +50,8 @@ protected:
 
 protected:
 
+	CRITICAL_SECTION critsecWork;
+
 	SOCKET listenSocket;
 
 	HANDLE iocpHandle;

@@ -41,14 +41,22 @@ void Player::SerializeData(ostream& stream)
 
 void Player::SerializeExtraData(ostream& stream)
 {
-	stream << sendInfoBitMask << "\n";
-	const int bitMax = static_cast<int>(PIBTC::MAX);
-	for (int bit = 0; bit < bitMax; bit++)
+	if (sendInfoBitMask == 0)
 	{
-		if (sendInfoBitMask & (1 << bit))
+		stream << false << "\n";
+	}
+	else
+	{
+		stream << true << "\n";
+		stream << sendInfoBitMask << "\n";
+		const int bitMax = static_cast<int>(PIBTC::MAX);
+		for (int bit = 0; bit < bitMax; bit++)
 		{
-			SaveInfoToPacket(stream, bit);
-			sendInfoBitMask &= ~(1 << bit);
+			if (sendInfoBitMask & (1 << bit))
+			{
+				SaveInfoToPacket(stream, bit);
+				sendInfoBitMask &= ~(1 << bit);
+			}
 		}
 	}
 }
@@ -74,6 +82,11 @@ void Player::DeserializeData(istream& stream)
 
 void Player::DeserializeExtraData(istream& stream)
 {
+	bool flag = false;
+	stream >> flag;
+	if (flag == false)
+		return;
+
 	stream >> recvInfoBitMask;
 	const int bitMax = static_cast<int>(PIBTC::MAX);
 	for (int bit = 0; bit < bitMax; bit++)

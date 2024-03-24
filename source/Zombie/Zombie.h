@@ -67,6 +67,8 @@ public:
 
 	void SetNextGrid(const Vector3D& nextLoc);
 
+	inline int GetSendInfoBit() const { return sendInfoBitMask; }
+
 	/* 타겟 관련 함수 */
 
 	void SetTargetPlayer(std::shared_ptr<Player> player);

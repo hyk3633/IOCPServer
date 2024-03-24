@@ -151,6 +151,9 @@ void Zombie::SetTargetPlayer(shared_ptr<Player> player)
 
 void Zombie::SerializeData(ostream& stream)
 {
+	if (sendInfoBitMask == 0)
+		return;
+
 	stream << GetNumber() << "\n";
 	stream << sendInfoBitMask << "\n";
 	const int bitMax = static_cast<int>(ZIBT::MAX);

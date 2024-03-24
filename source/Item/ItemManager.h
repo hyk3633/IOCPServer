@@ -11,6 +11,10 @@ public:
 	ItemManager();
 	~ItemManager() = default;
 
+	void SetItemStateToActivated(const int itemNumber);
+
+	void SetItemStateToDeactivated(const int itemNumber);
+
 	void SaveItemInfoToPacket(std::ostream& stream);
 
 	// 지정된 위치에 아이템 생성하는 함수

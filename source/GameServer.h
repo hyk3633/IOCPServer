@@ -54,6 +54,10 @@ protected:
 
 	static void Broadcast(std::stringstream&, const int skipNumber = -1);
 
+	static void HitPlayer(SocketInfo*, std::stringstream&);
+
+	static void HitZombie(SocketInfo*, std::stringstream&);
+
 private:
 
 	static CRITICAL_SECTION	critsecPlayerInfo;
