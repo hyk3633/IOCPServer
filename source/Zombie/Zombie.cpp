@@ -45,7 +45,17 @@ void Zombie::RemoveInRangePlayer(const int playerNumber)
 
 void Zombie::AllZombieInfoBitOn()
 {
-	sendInfoBitMask = (1 << static_cast<int>(ZIBT::MAX)) - 1;
+	//sendInfoBitMask = (1 << static_cast<int>(ZIBT::MAX)) - 1;
+	MaskToInfoBit(ZIBT::Location);
+	MaskToInfoBit(ZIBT::Rotation);
+	MaskToInfoBit(ZIBT::State);
+	if (stateEnum != EZombieState::IDLE && stateEnum != EZombieState::WAIT)
+		MaskToInfoBit(ZIBT::TargetNumber);
+}
+
+void Zombie::RegisterZombieDeadCallback(ZombieDeadCallback zdc)
+{
+	zombieDeadCb = zdc;
 }
 
 void Zombie::SetZombieState(ZombieState* newState)
@@ -131,6 +141,16 @@ void Zombie::SetNextGrid(const Vector3D& nextLoc)
 	MaskToInfoBit(ZIBT::NextLocation);
 }
 
+void Zombie::Activate()
+{
+	isActive = true;
+}
+
+void Zombie::Deactivate()
+{
+	isActive = false;
+}
+
 bool Zombie::Waiting()
 {
 	elapsedWaitingTime += 0.008f;
@@ -164,6 +184,18 @@ void Zombie::SerializeData(ostream& stream)
 			SaveInfoToPacket(stream, bit);
 			sendInfoBitMask &= ~(1 << bit);
 		}
+	}
+}
+
+void Zombie::TakeDamage(const float damage)
+{
+	health = max(health - damage, 0.f);
+	if (health == 0.f)
+	{
+		// critical section
+		Deactivate();
+		zombieDeadCb(GetNumber());
+		SetZombieState(IdleState::GetInstance());
 	}
 }
 

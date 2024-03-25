@@ -63,10 +63,10 @@ bool PathManager::WhetherRecalculPath()
 	}
 	else
 	{
-		// 타겟 위치와 경로의 마지막 위치 간 거리가 100 이상이면 경로 다시 계산
+		// 타겟 위치와 경로의 마지막 위치 간 거리가 70 이상이면 경로 다시 계산
 		Vector3D targetLocation = zombie->GetTargetPlayer()->GetLocation();
 		const float destToTarget = targetLocation.GetDistance(Vector3D(pathToTarget.back().x, pathToTarget.back().y, targetLocation.Z));
-		if (destToTarget > 100.f)
+		if (destToTarget > 70.f)
 		{
 			return true;
 		}

@@ -18,7 +18,7 @@ void Player::SetPlayerID(const string& id)
 void Player::WrestleStateOn()
 {
 	wrestleState = EWrestleState::WRESTLING;
-	wbCallback(GetNumber());
+	wrestlingCb(GetNumber());
 }
 
 void Player::WrestlStateOff()
@@ -26,9 +26,14 @@ void Player::WrestlStateOff()
 	wrestleState = EWrestleState::WAITING;
 }
 
-void Player::RegisterBroadcastCallback(WrestlingBroadcast wb)
+void Player::RegisterWrestlingCallback(WrestlingCallback wc)
 {
-	wbCallback = wb;
+	wrestlingCb = wc;
+}
+
+void Player::RegisterPlayerDeadCallback(PlayerDeadCallback pdc)
+{
+	playerDeadCb = pdc;
 }
 
 void Player::SerializeData(ostream& stream)
@@ -147,6 +152,11 @@ void Player::Waiting()
 			wrestleState = EWrestleState::ABLE;
 		}
 	}
+}
+
+void Player::TakeDamage(const float damage)
+{
+	playerDeadCb(GetNumber());
 }
 
 void Player::SetZombieNumberWrestleWith(const int number)

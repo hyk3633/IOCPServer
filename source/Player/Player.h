@@ -5,7 +5,9 @@
 #include <vector>
 #include <memory>
 
-typedef void(*WrestlingBroadcast)(int);
+typedef void(*WrestlingCallback)(int);
+
+typedef void(*PlayerDeadCallback)(int);
 
 class Player : public Character, public std::enable_shared_from_this<Player>
 {
@@ -29,7 +31,9 @@ public:
 
 	void SetSuccessToBlocking(const bool isSuccess) { isSuccessToBlocking = isSuccess; }
 
-	void RegisterBroadcastCallback(WrestlingBroadcast wb);
+	void RegisterWrestlingCallback(WrestlingCallback wc);
+
+	void RegisterPlayerDeadCallback(PlayerDeadCallback pdc);
 
 	virtual void SerializeData(std::ostream& stream) override;
 
@@ -44,6 +48,8 @@ public:
 	void ReceiveInfoToPacket(std::istream& stream, const int bitType);
 
 	void Waiting();
+
+	virtual void TakeDamage(const float damage) override;
 
 	inline int GetRecvInfoBitMask() const { return recvInfoBitMask; }
 
@@ -91,6 +97,8 @@ private:
 
 	float wrestleWaitElapsedTime = 0.f;
 
-	WrestlingBroadcast wbCallback = nullptr;
+	WrestlingCallback wrestlingCb = nullptr;
+
+	WrestlingCallback playerDeadCb = nullptr;
 
 };

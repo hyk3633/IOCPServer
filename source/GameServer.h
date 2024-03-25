@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <memory>
 
+class ZombieManager;
 class ItemManager;
 class Zombie;
 class Player;
@@ -56,11 +57,17 @@ protected:
 
 	static void HitPlayer(SocketInfo*, std::stringstream&);
 
+	static void ProcessPlayerDead(const int playerNumber);
+
 	static void HitZombie(SocketInfo*, std::stringstream&);
+
+	static void ProcessZombieDead(const int zombieNumber);
 
 private:
 
 	static CRITICAL_SECTION	critsecPlayerInfo;
+
+	static CRITICAL_SECTION	critsecZombieInfo;
 	
 	static std::unordered_map<int, SocketInfo*> playerSocketMap;
 
@@ -69,6 +76,8 @@ private:
 	static std::unordered_map<int, std::string> playerIDMap;
 
 	static std::unordered_map<int, std::shared_ptr<Player>> playerMap;
+
+	static std::unique_ptr<ZombieManager> zombieManager;
 
 	static std::unordered_map<int, std::shared_ptr<Zombie>> zombieMap;
 

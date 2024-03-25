@@ -15,7 +15,7 @@ void ChaseState::ChangeState(shared_ptr<Zombie> zombie)
 	if (zombie && targetPlayer)
 	{
 		const float distance = zombie->GetLocation().GetDistance(targetPlayer->GetLocation());
-		if (distance <= 100.f)
+		if (distance <= 70.f)
 		{
 			if (targetPlayer->GetWrestleState() == EWrestleState::ABLE)
 			{
@@ -44,7 +44,7 @@ void ChaseState::Update(shared_ptr<Zombie> zombie)
 	if (zombie && targetPlayer)
 	{
 		const float distance = zombie->GetLocation().GetDistance(targetPlayer->GetLocation());
-		if (distance <= 100.f)
+		if (distance <= 70.f)
 		{
 			if (targetPlayer->GetWrestleState() == EWrestleState::ABLE)
 			{
@@ -59,7 +59,7 @@ void ChaseState::Update(shared_ptr<Zombie> zombie)
 				zombie->SetZombieState(WaitState::GetInstance());
 			}
 		}
-		else if (distance > 100.f && distance <= 1200.f)
+		else if (distance > 70.f && distance <= 1200.f)
 		{
 			zombie->ProcessMovement();
 		}

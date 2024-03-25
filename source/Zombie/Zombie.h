@@ -21,6 +21,8 @@ enum class EZombieInfoBitType
 
 typedef EZombieInfoBitType ZIBT;
 
+typedef void(*ZombieDeadCallback)(int);
+
 class Zombie : public Character, public std::enable_shared_from_this<Zombie>
 {
 public:
@@ -40,6 +42,8 @@ public:
 	void RemoveInRangePlayer(const int playerNumber);
 
 	void AllZombieInfoBitOn();
+
+	void RegisterZombieDeadCallback(ZombieDeadCallback zdc);
 
 	/* 스테이트 객체에서 호출 하는 함수 */
 
@@ -69,6 +73,12 @@ public:
 
 	inline int GetSendInfoBit() const { return sendInfoBitMask; }
 
+	void Activate();
+
+	void Deactivate();
+
+	inline bool GetIsActive() const { return isActive; }
+
 	/* 타겟 관련 함수 */
 
 	void SetTargetPlayer(std::shared_ptr<Player> player);
@@ -78,6 +88,10 @@ public:
 	/* 직렬화 */
 
 	virtual void SerializeData(std::ostream& stream) override;
+
+	/*  */
+
+	virtual void TakeDamage(const float damage) override;
 
 protected:
 
@@ -108,5 +122,15 @@ private:
 	float waitingTime = 1.25f;
 
 	float elapsedWaitingTime = 0.f;
+
+	ZombieDeadCallback zombieDeadCb;
+
+	bool isActive = false;
+
+	// 좀비 스탯
+
+	float health = 100;
+
+	float maxHealth = 100;
 
 };

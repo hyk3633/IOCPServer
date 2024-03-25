@@ -33,6 +33,8 @@ public:
 
 	virtual void SerializeData(std::ostream& stream) = 0;
 
+	virtual void TakeDamage(const float damage) = 0;
+
 protected:
 
 

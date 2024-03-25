@@ -22,6 +22,7 @@ enum class EPacketType
 	PLAYERDISCONNECTED,	// 송신 전용
 	DESTROYITEM,
 	PICKUPITEM,
+	ZOMBIEDEAD,
 };
 
 

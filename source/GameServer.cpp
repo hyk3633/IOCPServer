@@ -1,6 +1,7 @@
 #include "GameServer.h"
 #include "Item/ItemManager.h"
 #include "Player/Player.h"
+#include "Zombie/ZombieManager.h"
 #include "Zombie/Zombie.h"
 #include <sstream>
 #include <chrono>
@@ -8,11 +9,13 @@
 using namespace std;
 
 CRITICAL_SECTION						GameServer::critsecPlayerInfo;
+CRITICAL_SECTION						GameServer::critsecZombieInfo;
 unordered_map<int, SocketInfo*>			GameServer::playerSocketMap;
 unique_ptr<ItemManager>					GameServer::itemManager;
 unordered_map<int, string>				GameServer::playerIDMap;
 unordered_map<int, shared_ptr<Player>>	GameServer::playerMap;
 int										GameServer::playerCount;
+unique_ptr<ZombieManager>				GameServer::zombieManager;
 unordered_map<int, shared_ptr<Zombie>>	GameServer::zombieMap;
 
 unsigned int WINAPI ZombieThreadStart(LPVOID param)
@@ -67,6 +70,15 @@ void GameServer::ZombieThread()
 		}
 		if (playerSocketMap.size())
 		{
+			if (zombieMap.size() == 0)
+			{
+				Vector3D location{ 800,-1000,97 };
+				Rotator rotation{ 0,120,0 };
+				shared_ptr<Zombie> zombie = zombieManager->GetZombie(location, rotation);
+				zombieMap[zombie->GetNumber()] = zombie;
+			}
+
+			EnterCriticalSection(&critsecZombieInfo);
 			bool sendFlag = false;
 			stringstream sendStream;
 			sendStream << static_cast<int>(EPacketType::SYNCHZOMBIE) << "\n";
@@ -80,6 +92,8 @@ void GameServer::ZombieThread()
 					sendFlag = true;
 				}
 			}
+			LeaveCriticalSection(&critsecZombieInfo);
+
 			if (packetFlag && sendFlag)
 			{
 				EnterCriticalSection(&critsecPlayerInfo);
@@ -106,21 +120,24 @@ bool GameServer::CreateZombieThread()
 
 void GameServer::InitializeZombieInfo()
 {
-	//for (int i = 0; i < maxZombieCount; i++)
-	//{
-	//	
-	//}
+	InitializeCriticalSection(&critsecZombieInfo);
+
+	zombieManager = make_unique<ZombieManager>();
 
 	Vector3D location{ 800,-1000,97 };
 	Rotator rotation{ 0,120,0 };
 
-	zombieMap[0] = make_shared<Zombie>(0);
-	zombieMap[0]->SetLocation(location);
-	zombieMap[0]->SetRotation(rotation);
+	shared_ptr<Zombie> zombie = zombieManager->GetZombie(location, rotation);
+	zombie->RegisterZombieDeadCallback(ProcessZombieDead);
+	zombieMap[zombie->GetNumber()] = zombie;
 
 	location.X = 1100;
 	location.Y = 900;
 	rotation.yaw = -120;
+
+	zombie = zombieManager->GetZombie(location, rotation);
+	zombie->RegisterZombieDeadCallback(ProcessZombieDead);
+	zombieMap[zombie->GetNumber()] = zombie;
 
 	//zombieMap[1].SetNumber(1);
 	//zombieMap[1].SetLocation(location);
@@ -208,7 +225,8 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 
 	playerMap[socketInfo->number] = make_shared<Player>(socketInfo->number);
 	shared_ptr<Player> playerPtr = playerMap[socketInfo->number];
-	playerPtr->RegisterBroadcastCallback(ProcessPlayerWrestlingStart);
+	playerPtr->RegisterWrestlingCallback(ProcessPlayerWrestlingStart);
+	playerPtr->RegisterPlayerDeadCallback(ProcessPlayerDead);
 	// 방금 접속한 플레이어의 정보를 역직렬화
 	playerPtr->DeserializeData(recvStream);
 
@@ -284,7 +302,10 @@ void GameServer::CheckInfoBitAndProcess(shared_ptr<Player> player, const PIBTC b
 		{
 			for (int number : player->GetZombiesInRange())
 			{
-				zombieMap[number]->AddPlayerToInRangeMap(player);
+				if (zombieMap.find(number) != zombieMap.end())
+				{
+					zombieMap[number]->AddPlayerToInRangeMap(player);
+				}
 			}
 			break;
 		}
@@ -292,13 +313,19 @@ void GameServer::CheckInfoBitAndProcess(shared_ptr<Player> player, const PIBTC b
 		{
 			for (int number : player->GetZombiesOutRange())
 			{
-				zombieMap[number]->RemoveInRangePlayer(player->GetNumber());
+				if (zombieMap.find(number) != zombieMap.end()) 
+				{
+					zombieMap[number]->RemoveInRangePlayer(player->GetNumber());
+				}
 			}
 			break;
 		}
 		case PIBTC::ZombieAttackResult:
 		{
-			zombieMap[player->GetZombieNumberAttackedBy()]->ChangeState();
+			if (zombieMap.find(player->GetZombieNumberAttackedBy()) != zombieMap.end())
+			{
+				zombieMap[player->GetZombieNumberAttackedBy()]->ChangeState();
+			}
 			break;
 		}
 	}
@@ -386,10 +413,31 @@ void GameServer::HitPlayer(SocketInfo* socketInfo, stringstream& recvStream)
 
 }
 
+void GameServer::ProcessPlayerDead(const int playerNumber)
+{
+
+}
+
 void GameServer::HitZombie(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	int zombieNumber = 0;
 	recvStream >> zombieNumber;
+
 	cout << "플레이어 " << socketInfo->number << "가 좀비 " << zombieNumber << "를 때렸습니다." << "\n";
-	// 좀비 체력 처리
+	zombieMap[zombieNumber]->TakeDamage(100);
+}
+
+void GameServer::ProcessZombieDead(const int zombieNumber)
+{
+	cout << "좀비 " << zombieNumber << "가 죽었습니다.\n";
+
+	EnterCriticalSection(&critsecZombieInfo);
+	shared_ptr<Zombie> zombie = zombieMap[zombieNumber];
+	zombieMap.erase(zombieNumber);
+	LeaveCriticalSection(&critsecZombieInfo);
+
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::ZOMBIEDEAD) << "\n";
+	sendStream << zombieNumber << "\n";
+	Broadcast(sendStream);
 }
