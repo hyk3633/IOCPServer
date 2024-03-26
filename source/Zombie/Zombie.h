@@ -99,6 +99,8 @@ protected:
 
 	void MaskToInfoBit(const ZIBT bitType);
 
+	void InitializeInfo();
+
 private:
 
 	ZombieState* zombieState;
@@ -113,7 +115,7 @@ private:
 
 	std::map<int, std::shared_ptr<Player>> inRangePlayerMap;
 
-	int sendInfoBitMask;
+	int sendInfoBitMask = 0;
 
 	float speed = 100.f;
 
@@ -127,7 +129,7 @@ private:
 
 	bool isActive = false;
 
-	// ¡ª∫Ò Ω∫≈»
+	// Ω∫≈»
 
 	float health = 100;
 

@@ -45,11 +45,10 @@ void Zombie::RemoveInRangePlayer(const int playerNumber)
 
 void Zombie::AllZombieInfoBitOn()
 {
-	//sendInfoBitMask = (1 << static_cast<int>(ZIBT::MAX)) - 1;
 	MaskToInfoBit(ZIBT::Location);
 	MaskToInfoBit(ZIBT::Rotation);
 	MaskToInfoBit(ZIBT::State);
-	if (stateEnum != EZombieState::IDLE && stateEnum != EZombieState::WAIT)
+	if (IsTargetSet())
 		MaskToInfoBit(ZIBT::TargetNumber);
 }
 
@@ -63,6 +62,11 @@ void Zombie::SetZombieState(ZombieState* newState)
 	zombieState = newState;
 	stateEnum = zombieState->GetStateEnum();
 	MaskToInfoBit(ZIBT::State);
+	if (stateEnum == EZombieState::IDLE || stateEnum == EZombieState::WAIT)
+	{
+		targetPlayer = nullptr;
+		inRangePlayerMap.clear();
+	}
 }
 
 bool Zombie::CheckNearestPlayer()
@@ -149,6 +153,7 @@ void Zombie::Activate()
 void Zombie::Deactivate()
 {
 	isActive = false;
+	InitializeInfo();
 }
 
 bool Zombie::Waiting()
@@ -195,7 +200,6 @@ void Zombie::TakeDamage(const float damage)
 		// critical section
 		Deactivate();
 		zombieDeadCb(GetNumber());
-		SetZombieState(IdleState::GetInstance());
 	}
 }
 
@@ -221,7 +225,8 @@ void Zombie::SaveInfoToPacket(ostream& stream, const int bitType)
 		}
 		case ZIBT::TargetNumber:
 		{
-			stream << GetNumber() << "\n";
+			if(targetPlayer)
+				stream << targetPlayer->GetNumber() << "\n";
 			break;
 		}
 		case ZIBT::NextLocation:
@@ -235,4 +240,13 @@ void Zombie::SaveInfoToPacket(ostream& stream, const int bitType)
 void Zombie::MaskToInfoBit(const ZIBT bitType)
 {
 	sendInfoBitMask |= (1 << static_cast<int>(bitType));
+}
+
+void Zombie::InitializeInfo()
+{
+	SetZombieState(IdleState::GetInstance());
+	targetPlayer = nullptr;
+	inRangePlayerMap.clear();
+	health = maxHealth;
+	sendInfoBitMask = 0;
 }

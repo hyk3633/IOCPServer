@@ -68,40 +68,47 @@ void GameServer::ZombieThread()
 		{
 			packetFlag = true;
 		}
-		if (playerSocketMap.size())
+		if (playerMap.size())
 		{
+			EnterCriticalSection(&critsecZombieInfo);
 			if (zombieMap.size() == 0)
 			{
 				Vector3D location{ 800,-1000,97 };
 				Rotator rotation{ 0,120,0 };
 				shared_ptr<Zombie> zombie = zombieManager->GetZombie(location, rotation);
+				zombie->AllZombieInfoBitOn();
 				zombieMap[zombie->GetNumber()] = zombie;
 			}
-
-			EnterCriticalSection(&critsecZombieInfo);
+			
 			bool sendFlag = false;
-			stringstream sendStream;
-			sendStream << static_cast<int>(EPacketType::SYNCHZOMBIE) << "\n";
-			sendStream << zombieMap.size() << "\n";
+			int zombieCount = 0;
 			for (auto& kv : zombieMap)
 			{
 				kv.second->Update();
 				if (packetFlag && kv.second->GetSendInfoBit())
 				{
-					kv.second->SerializeData(sendStream);
+					zombieCount++;
 					sendFlag = true;
 				}
 			}
-			LeaveCriticalSection(&critsecZombieInfo);
 
 			if (packetFlag && sendFlag)
 			{
+				stringstream sendStream;
+				sendStream << static_cast<int>(EPacketType::SYNCHZOMBIE) << "\n";
+				sendStream << zombieCount << "\n";
+				for (auto& kv : zombieMap)
+				{
+					kv.second->SerializeData(sendStream);
+				}
+
 				EnterCriticalSection(&critsecPlayerInfo);
 				Broadcast(sendStream);
 				LeaveCriticalSection(&critsecPlayerInfo);
 				packetFlag = false;
 				zombieThreadElapsedTime = 0;
 			}
+			LeaveCriticalSection(&critsecZombieInfo);
 		}
 		zombieThreadElapsedTime += 0.008f;
 		Sleep(8);
@@ -135,13 +142,9 @@ void GameServer::InitializeZombieInfo()
 	location.Y = 900;
 	rotation.yaw = -120;
 
-	zombie = zombieManager->GetZombie(location, rotation);
-	zombie->RegisterZombieDeadCallback(ProcessZombieDead);
-	zombieMap[zombie->GetNumber()] = zombie;
-
-	//zombieMap[1].SetNumber(1);
-	//zombieMap[1].SetLocation(location);
-	//zombieMap[1].SetRotation(rotation);
+	shared_ptr<Zombie> zombie2 = zombieManager->GetZombie(location, rotation);
+	zombie2->RegisterZombieDeadCallback(ProcessZombieDead);
+	zombieMap[zombie2->GetNumber()] = zombie2;
 }
 
 void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
@@ -201,29 +204,21 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 	EnterCriticalSection(&critsecPlayerInfo);
 
 	// 기존 플레이어들의 정보를 방금 접속한 플레이어에게 보낼 스트림에 저장
-	stringstream otherPlayersInfoStream;
-	otherPlayersInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
-	otherPlayersInfoStream << playerMap.size() << "\n";				// 플레이어 수
+	stringstream initialInfoStream;
+	initialInfoStream << static_cast<int>(EPacketType::INITIALINFO) << "\n";
+	initialInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
+	initialInfoStream << playerMap.size() << "\n";				// 플레이어 수
 	for (auto& p : playerMap)
 	{
-		otherPlayersInfoStream << playerIDMap[p.first] << "\n";		// 플레이어 아이디
-		p.second->SerializeData(otherPlayersInfoStream);			// 플레이어 정보
+		initialInfoStream << playerIDMap[p.first] << "\n";		// 플레이어 아이디
+		p.second->SerializeData(initialInfoStream);				// 플레이어 정보
 	}
-
-	// 방금 접속한 플레이어에게 기존의 플레이어들 정보 전송
-	Send(socketInfo, otherPlayersInfoStream);
-
-	// 방금 접속한 플레이어에게 좀비 정보 동기화
-	stringstream zombieInfoStream;
-	SaveZombieInfoToPacket(zombieInfoStream);
-	Send(socketInfo, zombieInfoStream);
-
-	// 방금 접속한 플레이어에게 아이템 정보 동기화
-	stringstream itemInfoStream;
-	SaveItemInfoToPacket(itemInfoStream);
-	Send(socketInfo, itemInfoStream);
+	SaveZombieInfoToPacket(initialInfoStream);	// 좀비 정보 직렬화
+	SaveItemInfoToPacket(initialInfoStream);	// 아이템 정보 직렬화
+	Send(socketInfo, initialInfoStream);
 
 	playerMap[socketInfo->number] = make_shared<Player>(socketInfo->number);
+	playerMap[socketInfo->number]->PlayerInGameMap();
 	shared_ptr<Player> playerPtr = playerMap[socketInfo->number];
 	playerPtr->RegisterWrestlingCallback(ProcessPlayerWrestlingStart);
 	playerPtr->RegisterPlayerDeadCallback(ProcessPlayerDead);
@@ -410,12 +405,24 @@ void GameServer::Broadcast(stringstream& sendStream, const int skipNumber)
 
 void GameServer::HitPlayer(SocketInfo* socketInfo, stringstream& recvStream)
 {
-
+	int playerNumber = 0;
+	recvStream >> playerNumber;
+	playerMap[playerNumber]->TakeDamage(100);
+	cout << "클라이언트 " << socketInfo->number << "가 클라이언트 " << playerNumber << "를 때렸습니다.\n";
 }
 
 void GameServer::ProcessPlayerDead(const int playerNumber)
 {
+	cout << "플레이어 " << playerNumber << "가 죽었습니다.\n";
 
+	EnterCriticalSection(&critsecPlayerInfo);
+	shared_ptr<Player> player = playerMap[playerNumber];
+	LeaveCriticalSection(&critsecPlayerInfo);
+
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::PLAYERDEAD) << "\n";
+	sendStream << playerNumber << "\n";
+	Broadcast(sendStream);
 }
 
 void GameServer::HitZombie(SocketInfo* socketInfo, stringstream& recvStream)

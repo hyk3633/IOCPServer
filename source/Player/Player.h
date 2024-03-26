@@ -21,6 +21,10 @@ public:
 
 	void SetPlayerID(const string& id);
 
+	inline bool IsPlayerInGameMap() const { return isInGameMap; }
+
+	inline void PlayerInGameMap() { isInGameMap = true; }
+
 	void WrestleStateOn();
 
 	void WrestlStateOff();
@@ -71,6 +75,8 @@ private:
 
 	string playerID;
 
+	bool isInGameMap = false;
+
 	int recvInfoBitMask = 0;
 
 	Vector3D velocity;
@@ -100,5 +106,11 @@ private:
 	WrestlingCallback wrestlingCb = nullptr;
 
 	WrestlingCallback playerDeadCb = nullptr;
+
+	// Ω∫≈»
+
+	float health = 100;
+
+	float maxHealth = 100;
 
 };

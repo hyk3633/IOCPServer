@@ -156,7 +156,12 @@ void Player::Waiting()
 
 void Player::TakeDamage(const float damage)
 {
-	playerDeadCb(GetNumber());
+	health = max(health - damage, 0.f);
+	if (health == 0.f)
+	{
+		// critical section
+		playerDeadCb(GetNumber());
+	}
 }
 
 void Player::SetZombieNumberWrestleWith(const int number)
