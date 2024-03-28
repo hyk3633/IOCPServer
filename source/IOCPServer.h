@@ -17,7 +17,7 @@ struct SocketInfo
 	WSABUF wsaBuf;				// io 작업버퍼
 	SOCKET socket;
 	char msgBuf[PACKET_SIZE];
-	int number;
+	int number = -1;
 };
 
 class IOCPServer

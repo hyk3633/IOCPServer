@@ -174,6 +174,14 @@ void Zombie::SetTargetPlayer(shared_ptr<Player> player)
 	MaskToInfoBit(ZIBT::TargetNumber);
 }
 
+void Zombie::CheckTargetAndCancelTargetting(const int playerNumber)
+{
+	if (IsTargetSet() && targetPlayer->GetNumber() == playerNumber)
+	{
+		SetZombieState(IdleState::GetInstance());
+	}
+}
+
 void Zombie::SerializeData(ostream& stream)
 {
 	if (sendInfoBitMask == 0)

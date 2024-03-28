@@ -3,6 +3,7 @@
 #include "Player/Player.h"
 #include "Zombie/ZombieManager.h"
 #include "Zombie/Zombie.h"
+#include "Zombie/State/IdleState.h"
 #include <sstream>
 #include <chrono>
 #include <iostream>
@@ -52,6 +53,7 @@ bool GameServer::InitializeServer()
 	packetCallbacks[static_cast<int>(EPacketType::SYNCHITEM)]			= SynchronizeItemInfo;
 	packetCallbacks[static_cast<int>(EPacketType::HITPLAYER)]			= HitPlayer;
 	packetCallbacks[static_cast<int>(EPacketType::HITZOMBIE)]			= HitZombie;
+	packetCallbacks[static_cast<int>(EPacketType::PLAYERRESPAWN)]		= RespawnPlayer;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
@@ -120,8 +122,8 @@ bool GameServer::CreateZombieThread()
 	unsigned int threadId;
 	zombieThread = (HANDLE*)_beginthreadex(NULL, 0, &ZombieThreadStart, this, CREATE_SUSPENDED, &threadId);
 	if (zombieThread == NULL) return false;
-	ResumeThread(zombieThread);
-	cout << "[Log] : Start zombie thread!\n";
+	//ResumeThread(zombieThread);
+	//cout << "[Log] : Start zombie thread!\n";
 	return true;
 }
 
@@ -155,14 +157,20 @@ void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
 
 	cout << "[Log] : " << socketInfo->number << "번 클라이언트 (ID : " << playerIDMap[socketInfo->number]  << ") 접속 종료\n";
 
-	playerSocketMap.erase(socketInfo->number);					
-	playerIDMap.erase(socketInfo->number);		
-	playerMap.erase(socketInfo->number);
+	RemovePlayerInfo(socketInfo->number);
+	
 	// 참조 카운트 확인
 
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream, socketInfo->number);
 	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::RemovePlayerInfo(const int playerNumber)
+{
+	playerSocketMap.erase(playerNumber);
+	playerIDMap.erase(playerNumber);
+	playerMap.erase(playerNumber);
 }
 
 void GameServer::SignUp(SocketInfo* socketInfo, stringstream& recvStream)
@@ -179,22 +187,28 @@ void GameServer::Login(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	string id, pw;
 	recvStream >> id >> pw;
+	const bool isLoginSuccess = dbConnector->PlayerLogin(id, pw);
+
+	EnterCriticalSection(&critsecPlayerInfo);
+	if (isLoginSuccess && socketInfo->number == -1)
+	{
+		playerIDMap[playerCount] = id;
+		playerSocketMap[playerCount] = socketInfo;
+		socketInfo->number = playerCount;
+		playerCount++;
+	}
+	LeaveCriticalSection(&critsecPlayerInfo);
 
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::LOGIN) << "\n";
-	const bool isLoginSuccess = dbConnector->PlayerLogin(id, pw);
 	sendStream << isLoginSuccess << "\n";
-	sendStream << playerCount << "\n";
+	if (isLoginSuccess)
+	{
+		sendStream << socketInfo->number << "\n";
+	}
 	Send(socketInfo, sendStream);
 
 	cout << "[Log] : ID " << id << " 로그인 요청 -> 결과(" << isLoginSuccess << ")\n";
-
-	EnterCriticalSection(&critsecPlayerInfo);
-	playerIDMap[playerCount] = id;
-	playerSocketMap[playerCount] = socketInfo;
-	socketInfo->number = playerCount;
-	playerCount++;
-	LeaveCriticalSection(&critsecPlayerInfo);
 }
 
 void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStream)
@@ -258,21 +272,32 @@ void GameServer::SaveItemInfoToPacket(std::stringstream& sendStream)
 void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	EnterCriticalSection(&critsecPlayerInfo);
+
+	if (playerMap.find(socketInfo->number) == playerMap.end())
+		return;
+
 	playerMap[socketInfo->number]->DeserializeData(recvStream);
 	playerMap[socketInfo->number]->DeserializeExtraData(recvStream);
-	LeaveCriticalSection(&critsecPlayerInfo);
-
+	
 	ProcessPlayerInfo(playerMap[socketInfo->number]);
 	playerMap[socketInfo->number]->Waiting();
-
-	stringstream sendStream;
-	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";
-	sendStream << playerMap.size() << "\n";
+	
+	int count = 0;
+	stringstream sendStream, dataStream;
 	for (auto& kv : playerMap)
 	{
-		kv.second->SerializeData(sendStream);
-		kv.second->SerializeExtraData(sendStream);
+		if (kv.second->GetIsDead())
+			continue;
+		kv.second->SerializeData(dataStream);
+		kv.second->SerializeExtraData(dataStream);
+		count++;
 	}
+	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";
+	sendStream << count << "\n";
+	sendStream << dataStream.str();
+
+	LeaveCriticalSection(&critsecPlayerInfo);
+
 	Send(socketInfo, sendStream);
 }
 
@@ -407,8 +432,8 @@ void GameServer::HitPlayer(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	int playerNumber = 0;
 	recvStream >> playerNumber;
-	playerMap[playerNumber]->TakeDamage(100);
 	cout << "클라이언트 " << socketInfo->number << "가 클라이언트 " << playerNumber << "를 때렸습니다.\n";
+	playerMap[playerNumber]->TakeDamage(100);
 }
 
 void GameServer::ProcessPlayerDead(const int playerNumber)
@@ -416,13 +441,13 @@ void GameServer::ProcessPlayerDead(const int playerNumber)
 	cout << "플레이어 " << playerNumber << "가 죽었습니다.\n";
 
 	EnterCriticalSection(&critsecPlayerInfo);
-	shared_ptr<Player> player = playerMap[playerNumber];
-	LeaveCriticalSection(&critsecPlayerInfo);
 
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::PLAYERDEAD) << "\n";
 	sendStream << playerNumber << "\n";
 	Broadcast(sendStream);
+	
+	LeaveCriticalSection(&critsecPlayerInfo);
 }
 
 void GameServer::HitZombie(SocketInfo* socketInfo, stringstream& recvStream)
@@ -447,4 +472,34 @@ void GameServer::ProcessZombieDead(const int zombieNumber)
 	sendStream << static_cast<int>(EPacketType::ZOMBIEDEAD) << "\n";
 	sendStream << zombieNumber << "\n";
 	Broadcast(sendStream);
+}
+
+void GameServer::RespawnPlayer(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	if (playerMap.find(socketInfo->number) != playerMap.end())
+	{
+		shared_ptr<Player> player = playerMap[socketInfo->number];
+
+		//EnterCriticalSection(&critsecZombieInfo);
+		const int zombieNumber1 = player->GetZombieNumberAttackedBy();
+		if (zombieMap.find(zombieNumber1) != zombieMap.end())
+		{
+			zombieMap[zombieNumber1]->CheckTargetAndCancelTargetting(socketInfo->number);
+		}
+		const int zombieNumber2 = player->GetZombieNumberWrestleWith();
+		if (zombieMap.find(zombieNumber2) != zombieMap.end())
+		{
+			zombieMap[zombieNumber2]->CheckTargetAndCancelTargetting(socketInfo->number);
+		}
+		//LeaveCriticalSection(&critsecZombieInfo);
+
+		playerMap[socketInfo->number]->InitializePlayerInfo();
+
+		// 만약 무기 장착 상태로 죽었다면 장착해제 상태로 리스폰
+		stringstream sendStream;
+		sendStream << static_cast<int>(EPacketType::PLAYERRESPAWN) << "\n";
+		sendStream << socketInfo->number << "\n";
+		playerMap[socketInfo->number]->SerializeData(sendStream);
+		Broadcast(sendStream);
+	}
 }

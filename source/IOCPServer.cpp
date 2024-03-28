@@ -161,7 +161,6 @@ void IOCPServer::WorkerThread()
 		if (!result || !recvBytes)
 		{
 			HandleDisconnectedClient(recvSocketInfo);
-			cout << "[Log] : Client end connection." << endl;
 			closesocket(recvSocketInfo->socket);
 			free(recvSocketInfo);
 			continue;

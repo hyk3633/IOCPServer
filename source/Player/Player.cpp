@@ -10,6 +10,25 @@ Player::~Player()
 {
 }
 
+void Player::InitializePlayerInfo()
+{
+	SetLocation(Vector3D{ 0, 0, 97.9f });
+	SetRotation(Rotator{ 0, 0, 0 });
+	velocity = Vector3D{ 0, 0, 0 };
+
+	zombiesInRange.clear();
+	zombiesOutRange.clear();
+	isHit = false;
+	zombieNumberAttackedBy = 0;
+	zombieNumberWrestleWith = 0;
+	sendInfoBitMask = 0;
+	isSuccessToBlocking = false;
+	wrestleState = EWrestleState::ABLE;
+	wrestleWaitElapsedTime = 0.f;
+	health = maxHealth;
+	isDead = false;
+}
+
 void Player::SetPlayerID(const string& id)
 {
 	playerID = id;
@@ -160,6 +179,7 @@ void Player::TakeDamage(const float damage)
 	if (health == 0.f)
 	{
 		// critical section
+		isDead = true;
 		playerDeadCb(GetNumber());
 	}
 }

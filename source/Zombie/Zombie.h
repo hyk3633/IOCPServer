@@ -85,6 +85,8 @@ public:
 
 	std::shared_ptr<Player> GetTargetPlayer() const { return targetPlayer; }
 
+	void CheckTargetAndCancelTargetting(const int playerNumber);
+
 	/* Á÷·ÄÈ­ */
 
 	virtual void SerializeData(std::ostream& stream) override;

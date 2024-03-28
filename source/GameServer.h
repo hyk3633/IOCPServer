@@ -29,6 +29,8 @@ protected:
 
 	virtual void HandleDisconnectedClient(SocketInfo* socketInfo) override;
 
+	void RemovePlayerInfo(const int playerNumber);
+
 	static void SignUp(SocketInfo*, std::stringstream&);
 
 	static void Login(SocketInfo*, std::stringstream&);
@@ -62,6 +64,8 @@ protected:
 	static void HitZombie(SocketInfo*, std::stringstream&);
 
 	static void ProcessZombieDead(const int zombieNumber);
+
+	static void RespawnPlayer(SocketInfo*, std::stringstream&);
 
 private:
 

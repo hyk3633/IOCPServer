@@ -17,6 +17,8 @@ public:
 
 	virtual ~Player() override;
 
+	void InitializePlayerInfo();
+
 	inline string GetPlayerID() const { return playerID; }
 
 	void SetPlayerID(const string& id);
@@ -67,6 +69,8 @@ public:
 
 	inline int GetZombieNumberWrestleWith() const { return zombieNumberWrestleWith; }
 
+	inline bool GetIsDead() const { return isDead; }
+
 protected:
 
 
@@ -85,17 +89,17 @@ private:
 
 	std::vector<int> zombiesInRange, zombiesOutRange;
 
-	bool isHit;
+	bool isHit = false;
 
-	int zombieNumberAttackedBy; // 날 때린 좀비
+	int zombieNumberAttackedBy = 0; // 날 때린 좀비
 
-	int zombieNumberWrestleWith; // 잡기 중인 좀비
+	int zombieNumberWrestleWith = 0; // 잡기 중인 좀비
 
 	// 클라이언트 전송용 데이터
 
-	int sendInfoBitMask;
+	int sendInfoBitMask = 0;
 
-	bool isSuccessToBlocking;
+	bool isSuccessToBlocking = false;
 
 	EWrestleState wrestleState = EWrestleState::ABLE;
 
@@ -112,5 +116,7 @@ private:
 	float health = 100;
 
 	float maxHealth = 100;
+
+	bool isDead = 0;
 
 };
