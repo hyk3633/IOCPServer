@@ -15,12 +15,6 @@ void Player::InitializePlayerInfo()
 	SetLocation(Vector3D{ 0, 0, 97.9f });
 	SetRotation(Rotator{ 0, 0, 0 });
 	velocity = Vector3D{ 0, 0, 0 };
-
-	zombiesInRange.clear();
-	zombiesOutRange.clear();
-	isHit = false;
-	zombieNumberAttackedBy = 0;
-	zombieNumberWrestleWith = 0;
 	sendInfoBitMask = 0;
 	isSuccessToBlocking = false;
 	wrestleState = EWrestleState::ABLE;
@@ -61,6 +55,7 @@ void Player::SerializeData(ostream& stream)
 	SerializeLocation(stream);
 	SerializeRotation(stream);
 	stream << velocity;
+	stream << currentRatencyStart << "\n";
 }
 
 void Player::SerializeExtraData(ostream& stream)
@@ -102,62 +97,7 @@ void Player::DeserializeData(istream& stream)
 	DeserializeLocation(stream);
 	DeserializeRotation(stream);
 	stream >> velocity;
-}
-
-void Player::DeserializeExtraData(istream& stream)
-{
-	bool flag = false;
-	stream >> flag;
-	if (flag == false)
-		return;
-
-	stream >> recvInfoBitMask;
-	const int bitMax = static_cast<int>(PIBTC::MAX);
-	for (int bit = 0; bit < bitMax; bit++)
-	{
-		if (recvInfoBitMask & (1 << bit))
-		{
-			ReceiveInfoToPacket(stream, bit);
-		}
-	}
-}
-
-void Player::ReceiveInfoToPacket(istream& stream, const int bitType)
-{
-	PIBTC type = static_cast<PIBTC>(bitType);
-	switch (type)
-	{
-		case PIBTC::ZombiesInRange:
-		{
-			zombiesInRange.clear();
-			int vectorSize = 0, number = -1;
-			stream >> vectorSize;
-			for (int i = 0; i < vectorSize; i++)
-			{
-				stream >> number;
-				zombiesInRange.push_back(number);
-			}
-			break;
-		}
-		case PIBTC::ZombiesOutRange:
-		{
-			zombiesOutRange.clear();
-			int vectorSize = 0, number = -1;
-			stream >> vectorSize;
-			for (int i = 0; i < vectorSize; i++)
-			{
-				stream >> number;
-				zombiesOutRange.push_back(number);
-			}
-			break;
-		}
-		case PIBTC::ZombieAttackResult:
-		{
-			stream >> isHit;
-			stream >> zombieNumberAttackedBy;
-			break;
-		}
-	}
+	stream >> currentRatencyStart;
 }
 
 void Player::Waiting()

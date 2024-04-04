@@ -124,6 +124,7 @@ void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
 		location = dest;
 	}
 	location.Truncate();
+
 	SetLocation(location);
 	MaskToInfoBit(ZIBT::Location);
 }

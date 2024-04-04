@@ -38,9 +38,9 @@ Vector3D& Vector3D::MoveTo(const Vector3D& direction, const float speed)
 
 Vector3D& Vector3D::Truncate()
 {
-	X = trunc(X * 1000) * 0.001;
-	Y = trunc(Y * 1000) * 0.001;
-	Z = trunc(Z * 1000) * 0.001;
+	X = trunc(X * 1000) * 0.001f;
+	Y = trunc(Y * 1000) * 0.001f;
+	Z = trunc(Z * 1000) * 0.001f;
 	return *this;
 }
 

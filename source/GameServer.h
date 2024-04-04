@@ -49,9 +49,15 @@ protected:
 
 	static void BroadcastPlayerInputAction(SocketInfo*, std::stringstream&);
 
+	static void ProcessInRangeZombie(SocketInfo*, std::stringstream&);
+
+	static void ProcessOutRangeZombie(SocketInfo*, std::stringstream&);
+
 	static void ProcessPlayerWrestlingResult(SocketInfo*, std::stringstream&);
 
 	static void ProcessPlayerWrestlingStart(const int playerNumber);
+
+	static void ProcessZombieHitResult(SocketInfo*, std::stringstream&);
 
 	static void SynchronizeItemInfo(SocketInfo*, std::stringstream&);
 
@@ -94,7 +100,5 @@ private:
 	float zombieThreadElapsedTime;
 
 	float zombiePacketSendingInterval = 0.1f;
-
-	bool packetFlag = true;
 
 };

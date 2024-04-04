@@ -30,7 +30,7 @@ void PathManager::InitializePathStatus()
 {
 	pathIdx = 0;
 	Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx], false);
-	nextPoint = Vector3D(pathToTarget[1].x, pathToTarget[1].y, zombie->GetLocation().Z);
+	nextPoint = Vector3D(pathToTarget[pathIdx + 1].x, pathToTarget[pathIdx + 1].y, zombie->GetLocation().Z);
 	nextDirection = (nextPoint - zombie->GetLocation()).Normalize();
 	zombie->SetNextGrid(nextPoint);
 }
@@ -40,10 +40,13 @@ void PathManager::FollowPath()
 	const float dist = nextPoint.GetDistance(zombie->GetLocation());
 	if (dist <= GRID_DIST)
 	{
-		if (pathIdx > 0) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx - 1], true);
+		if (pathIdx > 0)
+		{
+			Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx - 1], true);
+		}
 		if (pathIdx + 1 < pathToTarget.size())
 		{
-			if (pathIdx + 1 < pathToTarget.size()) Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx + 1], false);
+			Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx + 1], false);
 
 			pathIdx++;
 			nextPoint = Vector3D(pathToTarget[pathIdx].x, pathToTarget[pathIdx].y, zombie->GetLocation().Z);

@@ -49,11 +49,14 @@ bool GameServer::InitializeServer()
 	packetCallbacks[static_cast<int>(EPacketType::SPAWNPLAYER)]			= SpawnOtherPlayers;
 	packetCallbacks[static_cast<int>(EPacketType::SYNCHPLAYER)]			= SynchronizePlayerInfo;
 	packetCallbacks[static_cast<int>(EPacketType::PLAYERINPUTACTION)]	= BroadcastPlayerInputAction;
+	packetCallbacks[static_cast<int>(EPacketType::ZOMBIEINRANGE)]		= ProcessInRangeZombie;
+	packetCallbacks[static_cast<int>(EPacketType::ZOMBIEOUTRANGE)]		= ProcessOutRangeZombie;
 	packetCallbacks[static_cast<int>(EPacketType::WRESTLINGRESULT)]		= ProcessPlayerWrestlingResult;
 	packetCallbacks[static_cast<int>(EPacketType::SYNCHITEM)]			= SynchronizeItemInfo;
 	packetCallbacks[static_cast<int>(EPacketType::HITPLAYER)]			= HitPlayer;
 	packetCallbacks[static_cast<int>(EPacketType::HITZOMBIE)]			= HitZombie;
 	packetCallbacks[static_cast<int>(EPacketType::PLAYERRESPAWN)]		= RespawnPlayer;
+	packetCallbacks[static_cast<int>(EPacketType::ZOMBIEHITSME)]		= ProcessZombieHitResult;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
@@ -63,6 +66,9 @@ bool GameServer::InitializeServer()
 void GameServer::ZombieThread()
 {
 	InitializeZombieInfo();
+	
+	bool packetFlag = true, sendFlag = false;
+	int zombieCount = 0;
 
 	while (1)
 	{
@@ -81,13 +87,11 @@ void GameServer::ZombieThread()
 				zombie->AllZombieInfoBitOn();
 				zombieMap[zombie->GetNumber()] = zombie;
 			}
-			
-			bool sendFlag = false;
-			int zombieCount = 0;
+
 			for (auto& kv : zombieMap)
 			{
 				kv.second->Update();
-				if (packetFlag && kv.second->GetSendInfoBit())
+				if (kv.second->GetSendInfoBit())
 				{
 					zombieCount++;
 					sendFlag = true;
@@ -108,8 +112,10 @@ void GameServer::ZombieThread()
 				Broadcast(sendStream);
 				LeaveCriticalSection(&critsecPlayerInfo);
 				packetFlag = false;
+				sendFlag = false;
 				zombieThreadElapsedTime = 0;
 			}
+			zombieCount = 0;
 			LeaveCriticalSection(&critsecZombieInfo);
 		}
 		zombieThreadElapsedTime += 0.008f;
@@ -122,8 +128,8 @@ bool GameServer::CreateZombieThread()
 	unsigned int threadId;
 	zombieThread = (HANDLE*)_beginthreadex(NULL, 0, &ZombieThreadStart, this, CREATE_SUSPENDED, &threadId);
 	if (zombieThread == NULL) return false;
-	//ResumeThread(zombieThread);
-	//cout << "[Log] : Start zombie thread!\n";
+	ResumeThread(zombieThread);
+	cout << "[Log] : Start zombie thread!\n";
 	return true;
 }
 
@@ -277,9 +283,6 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 		return;
 
 	playerMap[socketInfo->number]->DeserializeData(recvStream);
-	playerMap[socketInfo->number]->DeserializeExtraData(recvStream);
-	
-	ProcessPlayerInfo(playerMap[socketInfo->number]);
 	playerMap[socketInfo->number]->Waiting();
 	
 	int count = 0;
@@ -301,56 +304,6 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 	Send(socketInfo, sendStream);
 }
 
-void GameServer::ProcessPlayerInfo(shared_ptr<Player> player)
-{
-	const int recvInfoBitMask = player->GetRecvInfoBitMask();
-	const int bitMax = static_cast<int>(PIBTC::MAX);
-	for (int bit = 0; bit < bitMax; bit++)
-	{
-		if (recvInfoBitMask & (1 << bit))
-		{
-			CheckInfoBitAndProcess(player, static_cast<PIBTC>(bit));
-		}
-	}
-}
-
-void GameServer::CheckInfoBitAndProcess(shared_ptr<Player> player, const PIBTC bitType)
-{
-	switch (bitType)
-	{
-		case PIBTC::ZombiesInRange:
-		{
-			for (int number : player->GetZombiesInRange())
-			{
-				if (zombieMap.find(number) != zombieMap.end())
-				{
-					zombieMap[number]->AddPlayerToInRangeMap(player);
-				}
-			}
-			break;
-		}
-		case PIBTC::ZombiesOutRange:
-		{
-			for (int number : player->GetZombiesOutRange())
-			{
-				if (zombieMap.find(number) != zombieMap.end()) 
-				{
-					zombieMap[number]->RemoveInRangePlayer(player->GetNumber());
-				}
-			}
-			break;
-		}
-		case PIBTC::ZombieAttackResult:
-		{
-			if (zombieMap.find(player->GetZombieNumberAttackedBy()) != zombieMap.end())
-			{
-				zombieMap[player->GetZombieNumberAttackedBy()]->ChangeState();
-			}
-			break;
-		}
-	}
-}
-
 void GameServer::BroadcastPlayerInputAction(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	int inputType = 0;
@@ -364,6 +317,28 @@ void GameServer::BroadcastPlayerInputAction(SocketInfo* socketInfo, stringstream
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream, socketInfo->number);
 	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::ProcessInRangeZombie(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	int playerNumber = socketInfo->number, zombieNumber = -1;
+	recvStream >> zombieNumber;
+
+	if (zombieMap.find(zombieNumber) != zombieMap.end() && playerMap.find(playerNumber) != playerMap.end())
+	{
+		zombieMap[zombieNumber]->AddPlayerToInRangeMap(playerMap[playerNumber]);
+	}
+}
+
+void GameServer::ProcessOutRangeZombie(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	int playerNumber = socketInfo->number, zombieNumber = -1;
+	recvStream >> zombieNumber;
+
+	if (zombieMap.find(zombieNumber) != zombieMap.end() && playerMap.find(playerNumber) != playerMap.end())
+	{
+		zombieMap[zombieNumber]->RemoveInRangePlayer(playerNumber);
+	}
 }
 
 void GameServer::ProcessPlayerWrestlingResult(SocketInfo* socketInfo, stringstream& recvStream)
@@ -395,6 +370,22 @@ void GameServer::ProcessPlayerWrestlingStart(const int playerNumber)
 
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream);
+	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::ProcessZombieHitResult(SocketInfo* socketInfo, std::stringstream& recvStream)
+{
+	EnterCriticalSection(&critsecPlayerInfo);
+
+	int zombieNumber = -1;
+	bool bResult = false;
+	recvStream >> zombieNumber >> bResult;
+
+	if (zombieMap.find(zombieNumber) != zombieMap.end())
+	{
+		zombieMap[zombieNumber]->ChangeState();
+		cout << "좀비 " << zombieNumber << "가 플레이어 " << socketInfo->number << " 를 때렸습니다.\n";
+	}
 	LeaveCriticalSection(&critsecPlayerInfo);
 }
 
@@ -481,15 +472,10 @@ void GameServer::RespawnPlayer(SocketInfo* socketInfo, stringstream& recvStream)
 		shared_ptr<Player> player = playerMap[socketInfo->number];
 
 		//EnterCriticalSection(&critsecZombieInfo);
-		const int zombieNumber1 = player->GetZombieNumberAttackedBy();
-		if (zombieMap.find(zombieNumber1) != zombieMap.end())
+		const int zombieNumber = player->GetZombieNumberWrestleWith();
+		if (zombieMap.find(zombieNumber) != zombieMap.end())
 		{
-			zombieMap[zombieNumber1]->CheckTargetAndCancelTargetting(socketInfo->number);
-		}
-		const int zombieNumber2 = player->GetZombieNumberWrestleWith();
-		if (zombieMap.find(zombieNumber2) != zombieMap.end())
-		{
-			zombieMap[zombieNumber2]->CheckTargetAndCancelTargetting(socketInfo->number);
+			zombieMap[zombieNumber]->CheckTargetAndCancelTargetting(socketInfo->number);
 		}
 		//LeaveCriticalSection(&critsecZombieInfo);
 

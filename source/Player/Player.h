@@ -49,21 +49,9 @@ public:
 
 	void DeserializeData(std::istream& stream);
 
-	void DeserializeExtraData(std::istream& stream);
-
-	void ReceiveInfoToPacket(std::istream& stream, const int bitType);
-
 	void Waiting();
 
 	virtual void TakeDamage(const float damage) override;
-
-	inline int GetRecvInfoBitMask() const { return recvInfoBitMask; }
-
-	inline const std::vector<int>& GetZombiesInRange() const { return zombiesInRange; }
-
-	inline const std::vector<int>& GetZombiesOutRange() const { return zombiesOutRange; }
-
-	inline int GetZombieNumberAttackedBy() const { return zombieNumberAttackedBy; }
 
 	void SetZombieNumberWrestleWith(const int number);
 
@@ -81,19 +69,7 @@ private:
 
 	bool isInGameMap = false;
 
-	int recvInfoBitMask = 0;
-
 	Vector3D velocity;
-
-	// 클라이언트 수신용 데이터
-
-	std::vector<int> zombiesInRange, zombiesOutRange;
-
-	bool isHit = false;
-
-	int zombieNumberAttackedBy = 0; // 날 때린 좀비
-
-	int zombieNumberWrestleWith = 0; // 잡기 중인 좀비
 
 	// 클라이언트 전송용 데이터
 
@@ -110,6 +86,10 @@ private:
 	WrestlingCallback wrestlingCb = nullptr;
 
 	WrestlingCallback playerDeadCb = nullptr;
+
+	double currentRatencyStart;
+
+	int zombieNumberWrestleWith;
 
 	// 스탯
 
