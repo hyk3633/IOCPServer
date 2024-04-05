@@ -79,7 +79,7 @@ private:
 
 	EWrestleState wrestleState = EWrestleState::ABLE;
 
-	float wrestleWaitTime = 5.f;
+	float wrestleWaitTime = 10.f;
 
 	float wrestleWaitElapsedTime = 0.f;
 

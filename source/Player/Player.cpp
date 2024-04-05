@@ -19,6 +19,7 @@ void Player::InitializePlayerInfo()
 	isSuccessToBlocking = false;
 	wrestleState = EWrestleState::ABLE;
 	wrestleWaitElapsedTime = 0.f;
+	zombieNumberWrestleWith = -1;
 	health = maxHealth;
 	isDead = false;
 }
@@ -104,7 +105,7 @@ void Player::Waiting()
 {
 	if (wrestleState == EWrestleState::WAITING)
 	{
-		wrestleWaitElapsedTime += 0.016f;
+		wrestleWaitElapsedTime += 0.2f;
 		if (wrestleWaitElapsedTime >= wrestleWaitTime)
 		{
 			wrestleWaitElapsedTime = 0.f;

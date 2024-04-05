@@ -51,13 +51,13 @@ public:
 
 	bool CheckNearestPlayer();
 
-	bool IsTargetSet();
-
 	void ProcessMovement();
 
 	bool Waiting();
 
 	/* path manager에서 호출하는 함수 */
+
+	bool IsTargetValid();
 
 	void AddMovement(const Vector3D& direction, const Vector3D& dest);
 
@@ -83,7 +83,9 @@ public:
 
 	void SetTargetPlayer(std::shared_ptr<Player> player);
 
-	std::shared_ptr<Player> GetTargetPlayer() const { return targetPlayer; }
+	std::shared_ptr<Player> GetTargetPlayer() const;
+
+	bool GetTargetLocation(Vector3D& location);
 
 	void CheckTargetAndCancelTargetting(const int playerNumber);
 
@@ -113,9 +115,9 @@ private:
 
 	Vector3D nextLocation;
 
-	std::shared_ptr<Player> targetPlayer;
+	std::weak_ptr<Player> targetWeakPtr;
 
-	std::map<int, std::shared_ptr<Player>> inRangePlayerMap;
+	std::map<int, std::weak_ptr<Player>> inRangePlayerMap;
 
 	int sendInfoBitMask = 0;
 
@@ -123,7 +125,7 @@ private:
 
 	float interval = 0.016f;
 
-	float waitingTime = 1.25f;
+	float waitingTime = 2.5f;
 
 	float elapsedWaitingTime = 0.f;
 

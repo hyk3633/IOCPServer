@@ -12,7 +12,7 @@ using std::shared_ptr;
 void WaitState::ChangeState(shared_ptr<Zombie> zombie)
 {
 	shared_ptr<Player> targetPlayer = zombie->GetTargetPlayer();
-	if (zombie && targetPlayer) 
+	if (zombie && targetPlayer)
 	{
 		const float distance = zombie->GetLocation().GetDistance(targetPlayer->GetLocation());
 		if (distance <= 100.f)
@@ -38,6 +38,10 @@ void WaitState::ChangeState(shared_ptr<Zombie> zombie)
 		{
 			zombie->SetZombieState(IdleState::GetInstance());
 		}
+	}
+	else
+	{
+		zombie->SetZombieState(IdleState::GetInstance());
 	}
 }
 

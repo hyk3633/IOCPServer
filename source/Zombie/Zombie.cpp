@@ -22,12 +22,30 @@ Zombie::~Zombie()
 void Zombie::ChangeState()
 {
 	zombieState->ChangeState(shared_from_this());
-	elapsedWaitingTime = 0.f;
 }
 
 void Zombie::Update()
 {
-	zombieState->Update(shared_from_this());
+	if (stateEnum == EZombieState::IDLE)
+	{
+		zombieState->Update(shared_from_this());
+	}
+	else if (auto targetPlayer = targetWeakPtr.lock())
+	{
+		if (targetPlayer->GetIsDead())
+		{
+			targetWeakPtr.reset();
+			ChangeState();
+		}
+		else
+		{
+			zombieState->Update(shared_from_this());
+		}
+	}
+	else
+	{
+		ChangeState();
+	}
 }
 
 void Zombie::AddPlayerToInRangeMap(shared_ptr<Player> player)
@@ -48,8 +66,10 @@ void Zombie::AllZombieInfoBitOn()
 	MaskToInfoBit(ZIBT::Location);
 	MaskToInfoBit(ZIBT::Rotation);
 	MaskToInfoBit(ZIBT::State);
-	if (IsTargetSet())
+	if (IsTargetValid())
+	{
 		MaskToInfoBit(ZIBT::TargetNumber);
+	}
 }
 
 void Zombie::RegisterZombieDeadCallback(ZombieDeadCallback zdc)
@@ -62,9 +82,9 @@ void Zombie::SetZombieState(ZombieState* newState)
 	zombieState = newState;
 	stateEnum = zombieState->GetStateEnum();
 	MaskToInfoBit(ZIBT::State);
-	if (stateEnum == EZombieState::IDLE || stateEnum == EZombieState::WAIT)
+	if (stateEnum == EZombieState::IDLE)
 	{
-		targetPlayer = nullptr;
+		targetWeakPtr.reset();
 		inRangePlayerMap.clear();
 	}
 }
@@ -73,21 +93,28 @@ bool Zombie::CheckNearestPlayer()
 {
 	if (inRangePlayerMap.empty())
 		return false;
+
 	float minDist = 10000.f;
 	int nearestNumber = -1;
 	for (auto& kv : inRangePlayerMap)
 	{
-		shared_ptr<Player> player = kv.second;
-		Vector3D toTarget = player->GetLocation() - GetLocation();
-		const float angleDegree = RadiansToDegrees(Acos(DotProduct(toTarget.Normalize(), GetForwardVector())));
-		if (angleDegree < 60.f)
+		if (auto player = kv.second.lock())
 		{
-			const float dist = toTarget.GetMagnitude();
-			if (dist < minDist)
+			Vector3D toTarget = player->GetLocation() - GetLocation();
+			const float angleDegree = RadiansToDegrees(Acos(DotProduct(toTarget.Normalize(), GetForwardVector())));
+			if (angleDegree < 60.f)
 			{
-				minDist = dist;
-				nearestNumber = kv.first;
+				const float dist = toTarget.GetMagnitude();
+				if (dist < minDist)
+				{
+					minDist = dist;
+					nearestNumber = kv.first;
+				}
 			}
+		}
+		else
+		{
+			inRangePlayerMap.erase(kv.first);
 		}
 	}
 	if (nearestNumber == -1)
@@ -96,19 +123,31 @@ bool Zombie::CheckNearestPlayer()
 	}
 	else
 	{
-		SetTargetPlayer(inRangePlayerMap[nearestNumber]);
-		return true;
+		if (auto shPtr = inRangePlayerMap[nearestNumber].lock())
+		{
+			if (shPtr->GetIsDead() == false)
+			{
+				SetTargetPlayer(shPtr);
+				return true;
+			}
+		}
+		inRangePlayerMap.erase(nearestNumber);
+		CheckNearestPlayer();
+		return false;
 	}
-}
-
-bool Zombie::IsTargetSet()
-{
-	return targetPlayer != nullptr;
 }
 
 void Zombie::ProcessMovement()
 {
 	pathManager->ProcessMovement();
+}
+
+bool Zombie::IsTargetValid()
+{
+	if (auto shPtr = targetWeakPtr.lock())
+		return true;
+	else
+		return false;
 }
 
 void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
@@ -170,16 +209,40 @@ bool Zombie::Waiting()
 
 void Zombie::SetTargetPlayer(shared_ptr<Player> player)
 {
-	targetPlayer = player;
-	targetPlayer->SetZombieNumberWrestleWith(GetNumber());
-	MaskToInfoBit(ZIBT::TargetNumber);
+	targetWeakPtr = player;
+	if (auto targetSharedPtr = targetWeakPtr.lock())
+	{
+		targetSharedPtr->SetZombieNumberWrestleWith(GetNumber());
+		MaskToInfoBit(ZIBT::TargetNumber);
+	}
+}
+
+std::shared_ptr<Player> Zombie::GetTargetPlayer() const
+{
+	return targetWeakPtr.lock();
+}
+
+bool Zombie::GetTargetLocation(Vector3D& location)
+{
+	if (auto targetSharedPtr = targetWeakPtr.lock())
+	{
+		if (targetSharedPtr->GetIsDead() == false)
+		{
+			location = targetSharedPtr->GetLocation();
+			return true;
+		}
+	}
+	return false;
 }
 
 void Zombie::CheckTargetAndCancelTargetting(const int playerNumber)
 {
-	if (IsTargetSet() && targetPlayer->GetNumber() == playerNumber)
+	if (auto targetSharedPtr = targetWeakPtr.lock())
 	{
-		SetZombieState(IdleState::GetInstance());
+		if (targetSharedPtr->GetNumber() == playerNumber)
+		{
+			SetZombieState(IdleState::GetInstance());
+		}
 	}
 }
 
@@ -234,8 +297,8 @@ void Zombie::SaveInfoToPacket(ostream& stream, const int bitType)
 		}
 		case ZIBT::TargetNumber:
 		{
-			if(targetPlayer)
-				stream << targetPlayer->GetNumber() << "\n";
+			if(auto targetSharedPtr = targetWeakPtr.lock())
+				stream << targetSharedPtr->GetNumber() << "\n";
 			break;
 		}
 		case ZIBT::NextLocation:
@@ -254,7 +317,7 @@ void Zombie::MaskToInfoBit(const ZIBT bitType)
 void Zombie::InitializeInfo()
 {
 	SetZombieState(IdleState::GetInstance());
-	targetPlayer = nullptr;
+	targetWeakPtr.reset();
 	inRangePlayerMap.clear();
 	health = maxHealth;
 	sendInfoBitMask = 0;

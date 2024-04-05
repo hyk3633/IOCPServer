@@ -20,8 +20,16 @@ void PathManager::ProcessMovement()
 	if (WhetherRecalculPath())
 	{
 		Pathfinder::GetPathfinder()->ClearPathCost(pathIndexArr);
-		Pathfinder::GetPathfinder()->FindPath(zombie->GetLocation(), zombie->GetTargetPlayer()->GetLocation(), pathToTarget, pathIndexArr);
-		InitializePathStatus();
+		Vector3D targetLocation;
+		if (zombie->GetTargetLocation(targetLocation))
+		{
+			Pathfinder::GetPathfinder()->FindPath(zombie->GetLocation(), targetLocation, pathToTarget, pathIndexArr);
+			InitializePathStatus();
+		}
+		else
+		{
+			zombie->ChangeState();
+		}
 	}
 	FollowPath();
 }
@@ -67,11 +75,14 @@ bool PathManager::WhetherRecalculPath()
 	else
 	{
 		// 타겟 위치와 경로의 마지막 위치 간 거리가 70 이상이면 경로 다시 계산
-		Vector3D targetLocation = zombie->GetTargetPlayer()->GetLocation();
-		const float destToTarget = targetLocation.GetDistance(Vector3D(pathToTarget.back().x, pathToTarget.back().y, targetLocation.Z));
-		if (destToTarget > 70.f)
+		Vector3D targetLocation;
+		if (zombie->GetTargetLocation(targetLocation))
 		{
-			return true;
+			const float destToTarget = targetLocation.GetDistance(Vector3D(pathToTarget.back().x, pathToTarget.back().y, targetLocation.Z));
+			if (destToTarget > 70.f)
+			{
+				return true;
+			}
 		}
 	}
 	return false;

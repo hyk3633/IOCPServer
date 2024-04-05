@@ -280,7 +280,10 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 	EnterCriticalSection(&critsecPlayerInfo);
 
 	if (playerMap.find(socketInfo->number) == playerMap.end())
+	{
+		LeaveCriticalSection(&critsecPlayerInfo);
 		return;
+	}
 
 	playerMap[socketInfo->number]->DeserializeData(recvStream);
 	playerMap[socketInfo->number]->Waiting();

@@ -11,7 +11,7 @@ using std::shared_ptr;
 
 void ChaseState::ChangeState(shared_ptr<Zombie> zombie)
 {
-	shared_ptr<Player> targetPlayer = zombie->GetTargetPlayer();
+	auto targetPlayer = zombie->GetTargetPlayer();
 	if (zombie && targetPlayer)
 	{
 		const float distance = zombie->GetLocation().GetDistance(targetPlayer->GetLocation());
@@ -35,12 +35,15 @@ void ChaseState::ChangeState(shared_ptr<Zombie> zombie)
 			zombie->SetZombieState(IdleState::GetInstance());
 		}
 	}
-	
+	else
+	{
+		zombie->SetZombieState(IdleState::GetInstance());
+	}
 }
 
 void ChaseState::Update(shared_ptr<Zombie> zombie)
 {
-	shared_ptr<Player> targetPlayer = zombie->GetTargetPlayer();
+	auto targetPlayer = zombie->GetTargetPlayer();
 	if (zombie && targetPlayer)
 	{
 		const float distance = zombie->GetLocation().GetDistance(targetPlayer->GetLocation());
@@ -67,6 +70,10 @@ void ChaseState::Update(shared_ptr<Zombie> zombie)
 		{
 			zombie->SetZombieState(IdleState::GetInstance());
 		}
+	}
+	else
+	{
+		zombie->SetZombieState(IdleState::GetInstance());
 	}
 }
 
