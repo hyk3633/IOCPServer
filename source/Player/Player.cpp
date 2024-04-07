@@ -15,7 +15,6 @@ void Player::InitializePlayerInfo()
 	SetLocation(Vector3D{ 0, 0, 97.9f });
 	SetRotation(Rotator{ 0, 0, 0 });
 	velocity = Vector3D{ 0, 0, 0 };
-	sendInfoBitMask = 0;
 	isSuccessToBlocking = false;
 	wrestleState = EWrestleState::ABLE;
 	wrestleWaitElapsedTime = 0.f;
@@ -57,40 +56,6 @@ void Player::SerializeData(ostream& stream)
 	SerializeRotation(stream);
 	stream << velocity;
 	stream << currentRatencyStart << "\n";
-}
-
-void Player::SerializeExtraData(ostream& stream)
-{
-	if (sendInfoBitMask == 0)
-	{
-		stream << false << "\n";
-	}
-	else
-	{
-		stream << true << "\n";
-		stream << sendInfoBitMask << "\n";
-		const int bitMax = static_cast<int>(PIBTC::MAX);
-		for (int bit = 0; bit < bitMax; bit++)
-		{
-			if (sendInfoBitMask & (1 << bit))
-			{
-				SaveInfoToPacket(stream, bit);
-				sendInfoBitMask &= ~(1 << bit);
-			}
-		}
-	}
-}
-
-void Player::SaveInfoToPacket(ostream& stream, const int bitType)
-{
-	PIBTS type = static_cast<PIBTS>(bitType);
-	switch (type)
-	{
-		case PIBTS::WrestlingState:
-		{
-			break;
-		}
-	}
 }
 
 void Player::DeserializeData(istream& stream)

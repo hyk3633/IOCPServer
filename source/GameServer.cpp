@@ -295,7 +295,6 @@ void GameServer::SynchronizePlayerInfo(SocketInfo* socketInfo, stringstream& rec
 		if (kv.second->GetIsDead())
 			continue;
 		kv.second->SerializeData(dataStream);
-		kv.second->SerializeExtraData(dataStream);
 		count++;
 	}
 	sendStream << static_cast<int>(EPacketType::SYNCHPLAYER) << "\n";

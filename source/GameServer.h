@@ -43,10 +43,6 @@ protected:
 
 	static void SynchronizePlayerInfo(SocketInfo*, std::stringstream&);
 
-	static void ProcessPlayerInfo(std::shared_ptr<Player> player);
-
-	static void CheckInfoBitAndProcess(std::shared_ptr<Player> player, const PIBTC bitType);
-
 	static void BroadcastPlayerInputAction(SocketInfo*, std::stringstream&);
 
 	static void ProcessInRangeZombie(SocketInfo*, std::stringstream&);

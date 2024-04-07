@@ -1,7 +1,6 @@
 #pragma once
 #include "../Character/Character.h"
 #include "../Enums/WrestleState.h"
-#include "../Enums/PlayerInfoBitType.h"
 #include <vector>
 #include <memory>
 
@@ -43,10 +42,6 @@ public:
 
 	virtual void SerializeData(std::ostream& stream) override;
 
-	void SerializeExtraData(std::ostream& stream);
-
-	void SaveInfoToPacket(std::ostream& stream, const int bitType);
-
 	void DeserializeData(std::istream& stream);
 
 	void Waiting();
@@ -72,8 +67,6 @@ private:
 	Vector3D velocity;
 
 	// 클라이언트 전송용 데이터
-
-	int sendInfoBitMask = 0;
 
 	bool isSuccessToBlocking = false;
 
