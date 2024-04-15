@@ -2,7 +2,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 #include <WinSock2.h>
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include <iostream>
 #include <thread>
@@ -60,7 +60,7 @@ protected:
 
 	vector<HANDLE*> workerThreads;
 
-	vector<void(*)(SocketInfo*, stringstream&)> packetCallbacks;
+	unordered_map<EPacketType, void(*)(SocketInfo*, stringstream&)> packetCallbacks;
 
 	SocketInfo* socketInfo;
 

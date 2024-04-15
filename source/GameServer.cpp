@@ -43,20 +43,19 @@ bool GameServer::InitializeServer()
 
 	itemManager = make_unique<ItemManager>();
 
-	packetCallbacks = vector<void(*)(SocketInfo*, stringstream&)>(static_cast<int>(EPacketType::PACKETTYPE_MAX));
-	packetCallbacks[static_cast<int>(EPacketType::SIGNUP)]				= SignUp;
-	packetCallbacks[static_cast<int>(EPacketType::LOGIN)]				= Login;
-	packetCallbacks[static_cast<int>(EPacketType::SPAWNPLAYER)]			= SpawnOtherPlayers;
-	packetCallbacks[static_cast<int>(EPacketType::SYNCHPLAYER)]			= SynchronizePlayerInfo;
-	packetCallbacks[static_cast<int>(EPacketType::PLAYERINPUTACTION)]	= BroadcastPlayerInputAction;
-	packetCallbacks[static_cast<int>(EPacketType::ZOMBIEINRANGE)]		= ProcessInRangeZombie;
-	packetCallbacks[static_cast<int>(EPacketType::ZOMBIEOUTRANGE)]		= ProcessOutRangeZombie;
-	packetCallbacks[static_cast<int>(EPacketType::WRESTLINGRESULT)]		= ProcessPlayerWrestlingResult;
-	packetCallbacks[static_cast<int>(EPacketType::SYNCHITEM)]			= SynchronizeItemInfo;
-	packetCallbacks[static_cast<int>(EPacketType::HITPLAYER)]			= HitPlayer;
-	packetCallbacks[static_cast<int>(EPacketType::HITZOMBIE)]			= HitZombie;
-	packetCallbacks[static_cast<int>(EPacketType::PLAYERRESPAWN)]		= RespawnPlayer;
-	packetCallbacks[static_cast<int>(EPacketType::ZOMBIEHITSME)]		= ProcessZombieHitResult;
+	packetCallbacks[EPacketType::SIGNUP]				= SignUp;
+	packetCallbacks[EPacketType::LOGIN]					= Login;
+	packetCallbacks[EPacketType::SPAWNPLAYER]			= SpawnOtherPlayers;
+	packetCallbacks[EPacketType::SYNCHPLAYER]			= SynchronizePlayerInfo;
+	packetCallbacks[EPacketType::PLAYERINPUTACTION]		= BroadcastPlayerInputAction;
+	packetCallbacks[EPacketType::ZOMBIEINRANGE]			= ProcessInRangeZombie;
+	packetCallbacks[EPacketType::ZOMBIEOUTRANGE]		= ProcessOutRangeZombie;
+	packetCallbacks[EPacketType::WRESTLINGRESULT]		= ProcessPlayerWrestlingResult;
+	packetCallbacks[EPacketType::SYNCHITEM]				= SynchronizeItemInfo;
+	packetCallbacks[EPacketType::HITPLAYER]				= HitPlayer;
+	packetCallbacks[EPacketType::HITZOMBIE]				= HitZombie;
+	packetCallbacks[EPacketType::PLAYERRESPAWN]			= RespawnPlayer;
+	packetCallbacks[EPacketType::ZOMBIEHITSME]			= ProcessZombieHitResult;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
@@ -271,7 +270,17 @@ void GameServer::SaveZombieInfoToPacket(stringstream& sendStream)
 
 void GameServer::SaveItemInfoToPacket(std::stringstream& sendStream)
 {
-	sendStream << static_cast<int>(EPacketType::SYNCHITEM) << "\n";
+	sendStream << static_cast<int>(EPacketType::SPAWNITEM) << "\n";
+	sendStream << 2 << "\n";
+
+	sendStream << 0 << "\n" << 0 << "\n"; // id, key
+	Vector3D item1Loc{ 310,-220,40 };
+	sendStream << item1Loc << "\n";
+
+	sendStream << 1 << "\n" << 1 << "\n";
+	Vector3D item2Loc{ 310,140,40 };
+	sendStream << item2Loc << "\n";
+
 	itemManager->SaveItemInfoToPacket(sendStream);
 }
 
@@ -360,7 +369,7 @@ void GameServer::ProcessPlayerWrestlingResult(SocketInfo* socketInfo, stringstre
 	sendStream << wrestlingResult << "\n";
 
 	EnterCriticalSection(&critsecPlayerInfo);
-	Broadcast(sendStream, socketInfo->number);
+	Broadcast(sendStream);
 	LeaveCriticalSection(&critsecPlayerInfo);
 }
 

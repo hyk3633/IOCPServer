@@ -29,6 +29,7 @@ enum class EPacketType
 	PICKUPITEM,
 	ZOMBIEDEAD,
 	PLAYERDEAD,
+	SPAWNITEM,
 };
 
 

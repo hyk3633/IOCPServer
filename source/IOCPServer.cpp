@@ -177,9 +177,9 @@ void IOCPServer::WorkerThread()
 		recvStream >> packetType;
 
 		// 함수 포인터로 패킷 처리
-		if (packetType >= 0 && packetType < static_cast<int>(EPacketType::PACKETTYPE_MAX))
+		if (packetCallbacks.find(static_cast<EPacketType>(packetType)) != packetCallbacks.end())
 		{
-			packetCallbacks[packetType](recvSocketInfo, recvStream);
+			packetCallbacks[static_cast<EPacketType>(packetType)](recvSocketInfo, recvStream);
 		}
 		else
 		{
