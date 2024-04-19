@@ -1,6 +1,8 @@
 #pragma once
 #include "../Enums/ItemType.h"
+#include "../Structs/ItemInfo.h"
 #include "../Structs/Vector3D.h"
+#include <memory>
 
 union ItemSubType
 {
@@ -10,15 +12,16 @@ union ItemSubType
 struct Item
 {
 	EItemState state;
-	EItemMainType mainType;
-	ItemSubType itemSubType;
+	std::shared_ptr<ItemInfo> itemInfo;
 	Vector3D location;
 
-	friend std::ostream& operator<<(std::ostream& stream, Item* item)
+	Item() : state(EItemState::Deactivated), itemInfo(nullptr), location() {}
+	Item(EItemState _state, std::shared_ptr<ItemInfo> _info, Vector3D _loc) : state(_state), itemInfo(_info), location(_loc) {}
+
+	friend std::ostream& operator<<(std::ostream& stream, shared_ptr<Item> item)
 	{
-		stream << static_cast<int>(item->state) << "\n";
-		stream << static_cast<int>(item->mainType) << "\n";
-		stream << static_cast<int>(item->itemSubType.meleeWeaponType) << "\n"; // 타입에 따라 다르게 넣도록
+		//stream << static_cast<int>(item->state) << "\n";
+		stream << item->itemInfo->itemKey << "\n";
 		stream << item->location;
 		return stream;
 	}

@@ -1,5 +1,7 @@
 #include "GameServer.h"
+#include "JsonComponent.h"
 #include "Item/ItemManager.h"
+#include "Structs/ItemInfo.h"
 #include "Player/Player.h"
 #include "Zombie/ZombieManager.h"
 #include "Zombie/Zombie.h"
@@ -232,7 +234,7 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 		initialInfoStream << playerIDMap[p.first] << "\n";		// 플레이어 아이디
 		p.second->SerializeData(initialInfoStream);				// 플레이어 정보
 	}
-	SaveZombieInfoToPacket(initialInfoStream);	// 좀비 정보 직렬화
+	//SaveZombieInfoToPacket(initialInfoStream);	// 좀비 정보 직렬화
 	SaveItemInfoToPacket(initialInfoStream);	// 아이템 정보 직렬화
 	Send(socketInfo, initialInfoStream);
 
@@ -271,16 +273,6 @@ void GameServer::SaveZombieInfoToPacket(stringstream& sendStream)
 void GameServer::SaveItemInfoToPacket(std::stringstream& sendStream)
 {
 	sendStream << static_cast<int>(EPacketType::SPAWNITEM) << "\n";
-	sendStream << 2 << "\n";
-
-	sendStream << 0 << "\n" << 0 << "\n"; // id, key
-	Vector3D item1Loc{ 310,-220,40 };
-	sendStream << item1Loc << "\n";
-
-	sendStream << 1 << "\n" << 1 << "\n";
-	Vector3D item2Loc{ 310,140,40 };
-	sendStream << item2Loc << "\n";
-
 	itemManager->SaveItemInfoToPacket(sendStream);
 }
 
@@ -406,7 +398,7 @@ void GameServer::SynchronizeItemInfo(SocketInfo* socketInfo, stringstream& recvS
 	recvStream >> itemNumber;
 
 	stringstream sendStream;
-	sendStream << static_cast<int>(EPacketType::DESTROYITEM) << "\n";
+	sendStream << static_cast<int>(EPacketType::ITEMPICKUPOTHER) << "\n";
 	sendStream << itemNumber << "\n";
 
 	itemManager->SetItemStateToDeactivated(itemNumber);
@@ -414,11 +406,6 @@ void GameServer::SynchronizeItemInfo(SocketInfo* socketInfo, stringstream& recvS
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream, socketInfo->number);
 	LeaveCriticalSection(&critsecPlayerInfo);
-
-	sendStream.str("");
-	sendStream << static_cast<int>(EPacketType::PICKUPITEM) << "\n";
-	sendStream << itemNumber << "\n";
-	Send(socketInfo, sendStream);
 }
 
 void GameServer::Broadcast(stringstream& sendStream, const int skipNumber)

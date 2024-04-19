@@ -5,6 +5,7 @@
 
 class ZombieManager;
 class ItemManager;
+class JsonComponent;
 class Zombie;
 class Player;
 

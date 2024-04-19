@@ -1,8 +1,12 @@
 #pragma once
 #include "Item.h"
+#include "../Structs/ItemInfo.h"
+#include <memory>
 #include <unordered_map>
 #include <sstream>
 #include <mutex>
+
+class JsonComponent;
 
 class ItemManager
 {
@@ -21,11 +25,13 @@ public:
 
 private:
 
-	std::unordered_map<int, Item> itemMap;
+	unique_ptr<JsonComponent> jsonComponent;
 
-	std::unordered_map<int, Item*> deactivatedItemMap;
+	std::unordered_map<int, shared_ptr<Item>> itemMap;
 
-	std::unordered_map<int, Item*> activatedItemMap;
+	std::unordered_map<int, weak_ptr<Item>> deactivatedItemMap;
+
+	std::unordered_map<int, weak_ptr<Item>> activatedItemMap;
 
 	std::mutex itemMutex;
 
