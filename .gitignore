@@ -43,3 +43,7 @@
 *.app
 /IOCPServer/x64/Debug
 /NavData
+/rapidjson
+/Json
+/.gitignore
+/.gitignore
