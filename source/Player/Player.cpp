@@ -2,8 +2,11 @@
 #include <iostream>
 using namespace std;
 
+#define EMPTY -1
+
 Player::Player(const int num) : Character(num)
 {
+	inventoryGrids = vector<vector<int>>(rows, vector<int>(columns, EMPTY));
 }
 
 Player::~Player()
@@ -94,3 +97,149 @@ void Player::SetZombieNumberWrestleWith(const int number)
 {
 	zombieNumberWrestleWith = number;
 }
+
+bool Player::UpdateItemGridPoint(shared_ptr<Item> item, const int itemID, GridPoint& pointToAdd, const bool isRotated)
+{
+	const GridPoint addedPoint = item->gridPoint;
+	GridPoint gridSize = item->itemInfo.itemGridSize;
+
+	for (int r = addedPoint.y; r < addedPoint.y + gridSize.y; ++r)
+	{
+		for (int c = addedPoint.x; c < addedPoint.x + gridSize.x; ++c)
+		{
+			if (IsGridValid(r, c) == false || inventoryGrids[r][c] != itemID)
+			{
+				return false;
+			}
+		}
+	}
+
+	if (isRotated != item->isRotated) 
+		gridSize = { gridSize.y, gridSize.x };
+	
+	if (IsRoomAvailable(pointToAdd, gridSize, itemID))
+	{
+		if (isRotated != item->isRotated)
+			gridSize = { gridSize.y, gridSize.x };
+
+		for (int r = addedPoint.y; r < addedPoint.y + gridSize.y; ++r)
+		{
+			for (int c = addedPoint.x; c < addedPoint.x + gridSize.x; ++c)
+			{
+				inventoryGrids[r][c] = EMPTY;
+			}
+		}
+
+		if (isRotated != item->isRotated)
+			item->Rotate();
+		AddItem(pointToAdd, item->itemInfo.itemGridSize, itemID);
+		item->gridPoint = pointToAdd;
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool Player::TryAddItem(shared_ptr<Item> item, const int itemID, GridPoint& addedPoint)
+{
+	GridPoint gridSize = item->itemInfo.itemGridSize;
+	for (int r = 0; r < rows; ++r)
+	{
+		for (int c = 0; c < columns; ++c)
+		{
+			if (IsPitInInventory(c + gridSize.x, r + gridSize.y) && IsRoomAvailable({ c, r }, gridSize, itemID))
+			{
+				AddItem({ c,r }, gridSize, itemID);
+				addedPoint = { c,r };
+				item->gridPoint = addedPoint;
+				return true;
+			}
+		}
+	}
+	for (int r = 0; r < rows; ++r)
+	{
+		for (int c = 0; c < columns; ++c)
+		{
+			if (IsPitInInventory(c + gridSize.y, r + gridSize.x) && IsRoomAvailable({ c, r }, {gridSize.y, gridSize.x}, itemID))
+			{
+				AddItem({ c, r}, { gridSize.y, gridSize.x }, itemID);
+				addedPoint = { c,r };
+				item->gridPoint = addedPoint;
+				item->isRotated = true;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void Player::AddItem(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemID)
+{
+	for (int r = topLeftPoint.y; r < topLeftPoint.y + gridSize.y; ++r)
+	{
+		for (int c = topLeftPoint.x; c < topLeftPoint.x + gridSize.x; ++c)
+		{
+			inventoryGrids[r][c] = itemID;
+		}
+	}
+	PrintInventoryStatus();
+}
+
+void Player::DropItem(shared_ptr<Item> item)
+{
+	const GridPoint addedPoint = item->gridPoint;
+	const GridPoint gridSize = item->itemInfo.itemGridSize;
+
+	for (int r = addedPoint.y; r < addedPoint.y + gridSize.y; ++r)
+	{
+		for (int c = addedPoint.x; c < addedPoint.x + gridSize.x; ++c)
+		{
+			inventoryGrids[r][c] = EMPTY;
+		}
+	}
+	item->gridPoint = { -1,-1 };
+}
+
+bool Player::IsRoomAvailable(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemID)
+{
+	for (int r = topLeftPoint.y; r < topLeftPoint.y + gridSize.y; ++r)
+	{
+		for (int c = topLeftPoint.x; c < topLeftPoint.x + gridSize.x; ++c)
+		{
+			if (inventoryGrids[r][c] != EMPTY && inventoryGrids[r][c] != itemID)
+				return false;
+		}
+	}
+	return true;
+}
+
+bool Player::IsPitInInventory(const int ySize, const int xSize)
+{
+	return (ySize > 0 && ySize <= rows && xSize > 0 && xSize <= columns);
+}
+
+bool Player::IsGridValid(const int y, const int x)
+{
+	return (y >= 0 && y < rows && x >= 0 && x < columns);
+}
+
+void Player::PrintInventoryStatus()
+{
+	for (int r = 0; r < rows; ++r)
+	{
+		for (int c = 0; c < columns; ++c)
+		{
+			if (inventoryGrids[r][c] == EMPTY)
+				cout << "*" << " ";
+			else
+				cout << inventoryGrids[r][c] << " ";
+		}
+		cout << endl;
+	}
+	cout << endl;
+}
+
+

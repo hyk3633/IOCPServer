@@ -1,6 +1,6 @@
 #pragma once
 
-struct IntPoint
+struct GridPoint
 {
 	int x;
 	int y;

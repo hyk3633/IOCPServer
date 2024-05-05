@@ -19,79 +19,75 @@ void JsonComponent::Initialize()
     doc.Parse(json.c_str());
 }
 
-shared_ptr<ItemInfo> JsonComponent::GetItemInfo(const int itemKey)
+void JsonComponent::GetItemCommonInfo(const int itemKey, ItemInfo& itemInfo)
 {
-    Value& item = doc["Items"][itemKey];
-    ItemInfo* itemInfo;
-    switch (item["ItemKey"].GetInt())
+    Value& item = doc[to_string(itemKey).c_str()];
+    SaveItemCommonInfoToStruct(item, itemInfo);
+}
+
+void JsonComponent::GetItemConcreteInfo(const int itemKey, EItemMainType itemType, std::stringstream& stream)
+{
+    Value& item = doc[to_string(itemKey).c_str()];
+    switch (itemType)
     {
-        case 0:
+        case EItemMainType::MeleeWeapon:
+        case EItemMainType::RangedWeapon:
         {
-            itemInfo = new MeleeWeaponInfo();
-            SaveCommonInfo(item, itemInfo);
-            SaveConcreteInfo(item, static_cast<MeleeWeaponInfo*>(itemInfo));
+            WeaponInfo info;
+            SaveItemConcreteInfo(item, info);
+            stream << info;
             break;
         }
-        case 1:
+        case EItemMainType::RecoveryItem:
         {
-            itemInfo = new RangedWeaponInfo();
-            SaveCommonInfo(item, itemInfo);
-            SaveConcreteInfo(item, static_cast<RangedWeaponInfo*>(itemInfo));
+            RecoveryItemInfo info;
+            SaveItemConcreteInfo(item, info);
+            stream << info;
             break;
         }
-        case 2:
+        case EItemMainType::AmmoItem:
         {
-            itemInfo = new RecoveryItemInfo();
-            SaveCommonInfo(item, itemInfo);
-            SaveConcreteInfo(item, static_cast<RecoveryItemInfo*>(itemInfo));
+            AmmoItemInfo info;
+            SaveItemConcreteInfo(item, info);
+            stream << info;
             break;
-        }
-        case 3:
-        {
-            itemInfo = new AmmoItemInfo();
-            SaveCommonInfo(item, itemInfo);
-            SaveConcreteInfo(item, static_cast<AmmoItemInfo*>(itemInfo));
-            break;
-        }
-        default:
-        {
-            return nullptr;
         }
     }
-    return shared_ptr<ItemInfo>(itemInfo);
 }
 
-void JsonComponent::SaveCommonInfo(rapidjson::Value& valueObj, ItemInfo* itemInfo)
+void JsonComponent::SaveItemCommonInfoToStruct(rapidjson::Value& valueObj, ItemInfo& itemInfo)
 {
-    itemInfo->itemKey = valueObj["ItemKey"].GetInt();
-    itemInfo->itemName = valueObj["ItemName"].GetString();
-    itemInfo->itemType = static_cast<EItemMainType>(valueObj["ItemType"].GetInt());
-    itemInfo->itemGridSize = IntPoint{ valueObj["ItemGridSize"]["X"].GetInt(), valueObj["ItemGridSize"]["Y"].GetInt() };
+    itemInfo.itemKey       = valueObj["ItemKey"].GetInt();
+    itemInfo.itemName      = valueObj["ItemName"].GetString();
+    itemInfo.itemType      = static_cast<EItemMainType>(valueObj["ItemType"].GetInt());
+    itemInfo.itemGridSize  = GridPoint{ valueObj["ItemGridSize"]["X"].GetInt(), valueObj["ItemGridSize"]["Y"].GetInt() };
+    itemInfo.count         = valueObj["Count"].GetInt();
+    itemInfo.isConsumable  = valueObj["IsConsumable"].GetInt();
 }
 
-void JsonComponent::SaveConcreteInfo(rapidjson::Value& valueObj, MeleeWeaponInfo* itemInfo)
+void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, WeaponInfo& itemInfo)
 {
-    itemInfo->attackPower = valueObj["MeleeWeapon"]["AttackPower"].GetDouble();
-    itemInfo->attackSpeed = valueObj["MeleeWeapon"]["AttackSpeed"].GetDouble();
+    itemInfo.attackPower    = valueObj["WeaponType"].GetDouble();
+    itemInfo.weaponType     = static_cast<EWeaponType>(valueObj["WeaponType"].GetInt());
 }
 
-void JsonComponent::SaveConcreteInfo(rapidjson::Value& valueObj, RangedWeaponInfo* itemInfo)
+void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, RangedWeaponInfo& itemInfo)
 {
-    itemInfo->attackPower =     valueObj["RangedWeapon"]["AttackPower"].GetDouble();
-    itemInfo->fireRate =        valueObj["RangedWeapon"]["FireRate"].GetDouble();
-    itemInfo->recoil =          valueObj["RangedWeapon"]["Recoil"].GetDouble();
-    itemInfo->magazine =        valueObj["RangedWeapon"]["Magazine"].GetInt();
-    itemInfo->reloadingSpeed =  valueObj["RangedWeapon"]["ReloadingSpeed"].GetDouble();
+    itemInfo.attackPower    = valueObj["WeaponType"].GetDouble();
+    itemInfo.weaponType     = static_cast<EWeaponType>(valueObj["WeaponType"].GetInt());
+    itemInfo.fireRate       = valueObj["RangedWeapon"]["FireRate"].GetDouble();
+    itemInfo.recoil         = valueObj["RangedWeapon"]["Recoil"].GetDouble();
+    itemInfo.magazine       = valueObj["RangedWeapon"]["Magazine"].GetInt();
+    itemInfo.reloadingSpeed = valueObj["RangedWeapon"]["ReloadingSpeed"].GetDouble();
 }
 
-void JsonComponent::SaveConcreteInfo(rapidjson::Value& valueObj, RecoveryItemInfo* itemInfo)
+void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, RecoveryItemInfo& itemInfo)
 {
-    itemInfo->recoveryAmount =  valueObj["RecoveryItem"]["RecoveryAmount"].GetInt();
-    itemInfo->usingSpeed =      valueObj["RecoveryItem"]["UsingSpeed"].GetDouble();
+    itemInfo.recoveryAmount =  valueObj["RecoveryItem"]["RecoveryAmount"].GetInt();
+    itemInfo.usingSpeed =      valueObj["RecoveryItem"]["UsingSpeed"].GetDouble();
 }
 
-void JsonComponent::SaveConcreteInfo(rapidjson::Value& valueObj, AmmoItemInfo* itemInfo)
+void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, AmmoItemInfo& itemInfo)
 {
-    itemInfo->ammoType =    valueObj["AmmoItem"]["AmmoType"].GetInt();
-    itemInfo->amount =      valueObj["AmmoItem"]["Amount"].GetInt();
+    itemInfo.ammoType =    valueObj["AmmoItem"]["AmmoType"].GetInt();
 }

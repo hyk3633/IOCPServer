@@ -3,11 +3,10 @@
 enum class EItemMainType
 {
 	MeleeWeapon,
-};
-
-enum class EMeleeWeaponType
-{
-	Axe,
+	RangedWeapon,
+	RecoveryItem,
+	AmmoItem,
+	MAX,
 };
 
 enum class EItemState

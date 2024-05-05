@@ -4,10 +4,13 @@
 #include "../rapidjson/stringbuffer.h"
 #include "../rapidjson/prettywriter.h"
 #include "Structs/ItemInfo.h"
-#include "Structs/IntPoint.h"
+#include "Structs/GridPoint.h"
+#include "Enums/WeaponType.h"
+#include "Enums/ItemType.h"
 #include <memory>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 
 class JsonComponent
@@ -19,17 +22,21 @@ public:
 
 	void Initialize();
 
-	std::shared_ptr<ItemInfo> GetItemInfo(const int itemKey);
+	void GetItemCommonInfo(const int itemKey, ItemInfo& itemInfo);
 
-	void SaveCommonInfo(rapidjson::Value& valueObj, ItemInfo* itemInfo);
+	void GetItemConcreteInfo(const int itemKey, EItemMainType itemType, std::stringstream& stream);
 
-	void SaveConcreteInfo(rapidjson::Value& valueObj, MeleeWeaponInfo* itemInfo);
+protected:
 
-	void SaveConcreteInfo(rapidjson::Value& valueObj, RangedWeaponInfo* itemInfo);
+	void SaveItemCommonInfoToStruct(rapidjson::Value& valueObj, ItemInfo& itemInfo);
 
-	void SaveConcreteInfo(rapidjson::Value& valueObj, RecoveryItemInfo* itemInfo);
-
-	void SaveConcreteInfo(rapidjson::Value& valueObj, AmmoItemInfo* itemInfo);
+	void SaveItemConcreteInfo(rapidjson::Value& valueObj, WeaponInfo& itemInfo);
+		 
+	void SaveItemConcreteInfo(rapidjson::Value& valueObj, RangedWeaponInfo& itemInfo);
+		 
+	void SaveItemConcreteInfo(rapidjson::Value& valueObj, RecoveryItemInfo& itemInfo);
+		 
+	void SaveItemConcreteInfo(rapidjson::Value& valueObj, AmmoItemInfo& itemInfo);
 
 private:
 

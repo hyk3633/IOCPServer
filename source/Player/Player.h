@@ -1,6 +1,8 @@
 #pragma once
 #include "../Character/Character.h"
 #include "../Enums/WrestleState.h"
+#include "../Structs/GridPoint.h"
+#include "../Item/Item.h"
 #include <vector>
 #include <memory>
 
@@ -54,9 +56,23 @@ public:
 
 	inline bool GetIsDead() const { return isDead; }
 
+	bool UpdateItemGridPoint(shared_ptr<Item> item, const int itemID, GridPoint& pointToAdd, const bool isRotated);
+
+	bool TryAddItem(shared_ptr<Item> item, const int itemID, GridPoint& addedPoint);
+
+	void AddItem(const GridPoint& topLeftPoint, const GridPoint& GridSize, const int itemID);
+
+	void DropItem(shared_ptr<Item> item);
+
 protected:
 
+	bool IsRoomAvailable(const GridPoint& topLeftPoint, const GridPoint& GridSize, const int itemID);
 
+	bool IsPitInInventory(const int ySize, const int xSize);
+
+	bool IsGridValid(const int y, const int x);
+
+	void PrintInventoryStatus();
 
 private:
 
@@ -91,5 +107,15 @@ private:
 	float maxHealth = 100;
 
 	bool isDead = 0;
+
+	// 인벤토리
+
+	vector<vector<int>> inventoryGrids;
+
+
+	// 하드코딩 하지말고 입력받기
+	int columns = 6;
+
+	int rows = 15;
 
 };

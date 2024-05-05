@@ -1,103 +1,91 @@
 #pragma once
 #include <string>
+#include <iostream>
+#include <fstream>
 #include <sstream>
-#include "../Structs/IntPoint.h"
+#include "../Structs/GridPoint.h"
 #include "../Enums/ItemType.h"
+#include "../Enums/WeaponType.h"
+
+using std::ostream;
 
 struct ItemInfo
 {
-	ItemInfo() {};
+	ItemInfo() {}
 
 	int itemKey;
-
 	std::string itemName;
-
 	EItemMainType itemType;
-
-	IntPoint itemGridSize;
-
-	void CopyTo(ItemInfo* otherInfo)
-	{
-		otherInfo->itemKey = itemKey;
-		otherInfo->itemName = itemName;
-		otherInfo->itemType = itemType;
-		otherInfo->itemGridSize = itemGridSize;
-	}
+	GridPoint itemGridSize;
+	int count;
+	bool isConsumable;
+	
 };
 
-struct MeleeWeaponInfo : public ItemInfo
+struct WeaponInfo
 {
-	MeleeWeaponInfo() {};
+	WeaponInfo() {}
 
 	float attackPower;
+	EWeaponType weaponType;
 
-	float attackSpeed;
-
-	void CopyTo(MeleeWeaponInfo* otherInfo)
+	friend ostream& operator<<(ostream& stream, WeaponInfo& info)
 	{
-		ItemInfo::CopyTo(otherInfo);
-		otherInfo->attackPower = attackPower;
-		otherInfo->attackSpeed = attackSpeed;
+		stream << info.attackPower << "\n";
+		stream << static_cast<int>(info.weaponType) << "\n";
+		return stream;
 	}
 
 };
 
-struct RangedWeaponInfo : public ItemInfo
+struct RangedWeaponInfo : public WeaponInfo
 {
-	RangedWeaponInfo() {};
-
-	float attackPower;
+	RangedWeaponInfo() {}
 
 	float fireRate;
-
 	float recoil;
-
 	int magazine;
-
 	float reloadingSpeed;
 
-	void CopyTo(RangedWeaponInfo* otherInfo)
+	friend ostream& operator<<(ostream& stream, RangedWeaponInfo& info)
 	{
-		ItemInfo::CopyTo(otherInfo);
-		otherInfo->attackPower = attackPower;
-		otherInfo->fireRate = fireRate;
-		otherInfo->recoil = recoil;
-		otherInfo->magazine = magazine;
-		otherInfo->reloadingSpeed = reloadingSpeed;
+		stream << info.attackPower << "\n";
+		stream << static_cast<int>(info.weaponType) << "\n";
+		stream << info.fireRate << "\n";
+		stream << info.recoil << "\n";
+		stream << info.magazine << "\n";
+		stream << info.reloadingSpeed << "\n";
+		return stream;
 	}
 
 };
 
-struct RecoveryItemInfo : public ItemInfo
+struct RecoveryItemInfo
 {
-	RecoveryItemInfo() {};
+	RecoveryItemInfo() {}
 
 	int recoveryAmount;
-
 	float usingSpeed;
 
-	void CopyTo(RecoveryItemInfo* otherInfo)
+	friend ostream& operator<<(ostream& stream, RecoveryItemInfo& info)
 	{
-		ItemInfo::CopyTo(otherInfo);
-		otherInfo->recoveryAmount = recoveryAmount;
-		otherInfo->usingSpeed = usingSpeed;
+		stream << info.recoveryAmount << "\n";
+		stream << info.usingSpeed << "\n";
+		return stream;
 	}
 
 };
 
-struct AmmoItemInfo : public ItemInfo
+struct AmmoItemInfo
 {
-	AmmoItemInfo() {};
-
-	int amount;
+	AmmoItemInfo() {}
 
 	int ammoType;
 
-	void CopyTo(AmmoItemInfo* otherInfo)
+	friend ostream& operator<<(ostream& stream, AmmoItemInfo& info)
 	{
-		ItemInfo::CopyTo(otherInfo);
-		otherInfo->amount = amount;
-		otherInfo->ammoType = ammoType;
+		stream << info.ammoType << "\n";
+		return stream;
 	}
 
 };

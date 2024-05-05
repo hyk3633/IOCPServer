@@ -7,19 +7,25 @@ ItemManager::ItemManager()
 {
 	jsonComponent = make_unique<JsonComponent>();
 	jsonComponent->Initialize();
-	
-	itemMap[0] = make_shared<Item>(EItemState::Activated, jsonComponent->GetItemInfo(0), Vector3D{ 310,-220,40 });
-	itemMap[1] = make_shared<Item>(EItemState::Activated, jsonComponent->GetItemInfo(1), Vector3D{ 310,140,40 });
-	activatedItemMap[0] = itemMap[0];
-	activatedItemMap[1] = itemMap[1];
 
-	//float y = 320;
-	//for (int i = 0; i < 5; i++)
-	//{
-	//	itemMap[i] = Item{ EItemState::Deactivated, EItemMainType::MeleeWeapon, EMeleeWeaponType::Axe, Vector3D{-1010,y,340} };
-	//	y -= 100;
-	//	deactivatedItemMap[i] = &itemMap[i];
-	//}
+	stringstream concreteInfoStream;
+	ItemInfo itemInfo;
+
+	for (int i = 0; i < 4; i++)
+	{
+		jsonComponent->GetItemCommonInfo(i, itemInfo);
+		jsonComponent->GetItemConcreteInfo(i, itemInfo.itemType, concreteInfoStream);
+		itemMap[i] = make_shared<Item>(EItemState::Activated, itemInfo, concreteInfoStream, Vector3D{ 310,-220 + (float)i * 50,40 });
+
+		activatedItemMap[i] = itemMap[i];
+
+		concreteInfoStream.str() = "";
+	}
+}
+
+shared_ptr<Item> ItemManager::GetItem(const int itemID)
+{
+	return itemMap[itemID];
 }
 
 void ItemManager::SetItemStateToActivated(const int itemNumber)
@@ -47,6 +53,8 @@ void ItemManager::SetItemStateToDeactivated(const int itemNumber)
 void ItemManager::SaveItemInfoToPacket(std::ostream& stream)
 {
 	lock_guard<mutex> lock(itemMutex);
+
+	// 아이템의 상태(enum)와 소유 상태인 경우 소유자 id도 전송
 	stream << itemMap.size() << "\n";
 	for (auto& kv : itemMap)
 	{

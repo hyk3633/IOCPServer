@@ -55,15 +55,19 @@ protected:
 
 	static void ProcessZombieHitResult(SocketInfo*, std::stringstream&);
 
-	static void SynchronizeItemInfo(SocketInfo*, std::stringstream&);
+	static void PlayerItemPickUp(SocketInfo*, std::stringstream&);
+
+	static void PlayerItemGridPointUpdate(SocketInfo*, std::stringstream&);
+
+	static void PlayerItemEquip(SocketInfo*, std::stringstream&);
+
+	static void PlayerItemDrop(SocketInfo*, std::stringstream&);
 
 	static void Broadcast(std::stringstream&, const int skipNumber = -1);
 
-	static void HitPlayer(SocketInfo*, std::stringstream&);
+	static void ProcessPlayerAttackResult(SocketInfo*, std::stringstream&);
 
 	static void ProcessPlayerDead(const int playerNumber);
-
-	static void HitZombie(SocketInfo*, std::stringstream&);
 
 	static void ProcessZombieDead(const int zombieNumber);
 
