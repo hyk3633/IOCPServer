@@ -105,7 +105,7 @@ bool DBConnector::ExcuteQuery(const string& id, const string& pw, EQueryType que
 	}
 
 	// 쿼리 매개변수
-	param1 = SQL_NTS, param2 = SQL_NTS;
+	SQLLEN param1 = SQL_NTS, param2 = SQL_NTS;
 	SQLRETURN retcode = SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, id.length(), 0, (char*)id.c_str(), 0, &param1);
 	retcode = SQLBindParameter(hstmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, pw.length(), 0, (char*)pw.c_str(), 0, &param2);
 
@@ -114,9 +114,10 @@ bool DBConnector::ExcuteQuery(const string& id, const string& pw, EQueryType que
 
 	if (retcode == SQL_SUCCESS)
 	{
+		char ret_id[paramSize], ret_pw[paramSize];
 		ZeroMemory(&ret_id, paramSize);
 		ZeroMemory(&ret_pw, paramSize);
-		slen_id = 0, slen_pw = 0;
+		SQLLEN slen_id = 0, slen_pw = 0;
 
 		retcode = SQLBindCol(hstmt, 1, SQL_C_CHAR, ret_id, paramSize, &slen_id);
 		retcode = SQLBindCol(hstmt, 2, SQL_C_CHAR, ret_pw, paramSize, &slen_pw);
@@ -139,8 +140,98 @@ bool DBConnector::ExcuteQuery(const string& id, const string& pw, EQueryType que
 			isPrimaryKeyError = false;
 	}
 
-	SQLCloseCursor(hstmt);
 	return false;
+}
+
+void DBConnector::SavePlayersItemInfo(const string& id, PlayerItems& playersItem)
+{
+	wstring query = L"INSERT INTO IOCPTest.dbo.PlayerItems(PlayerID, ItemID, Quantity, TopLeftX, TopLeftY, IsRotated, IsEquipped, EquippedSlotNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+	SQLRETURN retcode = SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, id.length(), 0, (char*)id.c_str(), 0, NULL);
+	retcode = SQLBindParameter(hstmt, 2, SQL_PARAM_INPUT, SQL_C_SLONG, SQL_INTEGER, 0, 0, &playersItem.itemID, 0, NULL);
+	retcode = SQLBindParameter(hstmt, 3, SQL_PARAM_INPUT, SQL_C_SLONG, SQL_INTEGER, 0, 0, &playersItem.quantity, 0, NULL);
+	retcode = SQLBindParameter(hstmt, 4, SQL_PARAM_INPUT, SQL_C_SLONG, SQL_INTEGER, 0, 0, &playersItem.topLeftX, 0, NULL);
+	retcode = SQLBindParameter(hstmt, 5, SQL_PARAM_INPUT, SQL_C_SLONG, SQL_INTEGER, 0, 0, &playersItem.topLeftY, 0, NULL);
+	retcode = SQLBindParameter(hstmt, 6, SQL_PARAM_INPUT, SQL_C_SLONG, SQL_INTEGER, 0, 0, &playersItem.isRotated, 0, NULL);
+	retcode = SQLBindParameter(hstmt, 7, SQL_PARAM_INPUT, SQL_C_SLONG, SQL_INTEGER, 0, 0, &playersItem.isEquipped, 0, NULL);
+	retcode = SQLBindParameter(hstmt, 8, SQL_PARAM_INPUT, SQL_C_SLONG, SQL_INTEGER, 0, 0, &playersItem.equippedSlotNumber, 0, NULL);
+
+	retcode = SQLExecDirect(hstmt, (wchar_t*)query.c_str(), SQL_NTS);
+
+	if (retcode != SQL_SUCCESS)
+	{
+		ErrorDisplay(retcode);
+		if (isPrimaryKeyError)
+			isPrimaryKeyError = false;
+
+		SQLCloseCursor(hstmt);
+	}
+}
+
+bool DBConnector::PlayerHasItem(const string& id, const int itemID)
+{
+	return false;
+}
+
+void DBConnector::GetPlayersItems(const string& id, std::vector<PlayerItems>& playerItemsArr)
+{
+	wstring query = L"SELECT ItemID, Quantity, TopLeftX, TopLeftY, IsRotated, IsEquipped, EquippedSlotNumber FROM IOCPTest.dbo.PlayerItems WHERE (PlayerID = ?)";
+	SQLLEN param = SQL_NTS;
+	SQLRETURN retcode = SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, id.length(), 0, (char*)id.c_str(), 0, &param);
+	retcode = SQLExecDirect(hstmt, (wchar_t*)query.c_str(), SQL_NTS);
+
+	if (retcode == SQL_SUCCESS)
+	{
+		SQLINTEGER itemID, quantity, topLeftX, topLeftY, isRotated, isEquipped, equippedSlotNumber;
+		SQLLEN len_itemID = SQL_NTS, len_quantity = SQL_NTS, len_topLeftX = SQL_NTS,
+			len_topLeftY = SQL_NTS, len_isRotated = SQL_NTS, len_isEquipped = SQL_NTS, len_equippedSlotNumber = SQL_NTS;
+
+		PlayerItems playerItem;
+
+		SQLBindCol(hstmt, 1, SQL_INTEGER, &playerItem.itemID,				sizeof(playerItem.itemID),				&len_itemID);
+		SQLBindCol(hstmt, 2, SQL_INTEGER, &playerItem.quantity,				sizeof(playerItem.quantity),			&len_quantity);
+		SQLBindCol(hstmt, 3, SQL_INTEGER, &playerItem.topLeftX,				sizeof(playerItem.topLeftX),			&len_topLeftX);
+		SQLBindCol(hstmt, 4, SQL_INTEGER, &playerItem.topLeftY,				sizeof(playerItem.topLeftY),			&len_topLeftY);
+		SQLBindCol(hstmt, 5, SQL_INTEGER, &playerItem.isRotated,			sizeof(playerItem.isRotated),			&len_isRotated);
+		SQLBindCol(hstmt, 6, SQL_INTEGER, &playerItem.isEquipped,			sizeof(playerItem.isEquipped),			&len_isEquipped);
+		SQLBindCol(hstmt, 7, SQL_INTEGER, &playerItem.equippedSlotNumber,	sizeof(playerItem.equippedSlotNumber),	&len_equippedSlotNumber);
+
+		while (SQLFetch(hstmt) == SQL_SUCCESS)
+		{
+			playerItemsArr.push_back(playerItem);
+		}
+	}
+	else
+	{
+		ErrorDisplay(retcode);
+		if (isPrimaryKeyError)
+			isPrimaryKeyError = false;
+	}
+
+	SQLCloseCursor(hstmt);
+}
+
+void DBConnector::SavePlayerStatus(const string& id, vector<PlayerItems>& playerItems)
+{
+	wstring deleteQuery = L"DELETE FROM IOCPTest.dbo.PlayerItems WHERE (PlayerID = ?)";
+	SQLLEN param = SQL_NTS;
+	SQLRETURN retcode = SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, id.length(), 0, (char*)id.c_str(), 0, &param);
+	retcode = SQLExecDirect(hstmt, (wchar_t*)deleteQuery.c_str(), SQL_NTS);
+	if (retcode == SQL_SUCCESS)
+	{
+		for (PlayerItems& playerItem : playerItems)
+		{
+			SavePlayersItemInfo(id, playerItem);
+
+			if (retcode != SQL_SUCCESS)
+			{
+				ErrorDisplay(retcode);
+				if (isPrimaryKeyError)
+					isPrimaryKeyError = false;
+			}
+		}
+	}
+	SQLCloseCursor(hstmt);
 }
 
 void DBConnector::ErrorDisplay(RETCODE retCode)

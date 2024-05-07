@@ -2,6 +2,8 @@
 #include <Windows.h>
 #include <sqlext.h>
 #include <string>
+#include <vector>
+#include "Structs/PlayerItems.h"
 #pragma comment(lib, "odbc32.lib")
 
 using namespace std;
@@ -36,6 +38,14 @@ public:
 
 	bool ExcuteQuery(const string& id, const string& pw, EQueryType queryType);
 
+	void SavePlayersItemInfo(const string& id, PlayerItems& playersItem);
+
+	bool PlayerHasItem(const string& id, const int itemID);
+
+	void GetPlayersItems(const string& id, std::vector<PlayerItems>& playerItemsArr);
+
+	void SavePlayerStatus(const string& id, vector<PlayerItems>& playerItems);
+
 private:
 
 	DBConnector() = default;
@@ -55,9 +65,6 @@ private:
 	SQLHSTMT	hstmt;
 
 	// 쿼리 관련 변수
-	SQLLEN param1, param2;
-	char ret_id[paramSize], ret_pw[paramSize];
-	SQLLEN slen_id = 0, slen_pw = 0;
 	bool isPrimaryKeyError;
 
 };

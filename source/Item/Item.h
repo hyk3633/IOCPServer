@@ -11,9 +11,10 @@ struct Item
 	EItemState state;
 	ItemInfo itemInfo;
 	Vector3D location;
-	std::stringstream concreteInfoStream;
 	bool isRotated = false;
 	GridPoint gridPoint;
+	
+	std::stringstream concreteInfoStream;
 
 	Item() : state(EItemState::Deactivated), itemInfo(), location() {}
 	Item(EItemState _state, ItemInfo& _info, std::stringstream& concInfo, Vector3D _loc)

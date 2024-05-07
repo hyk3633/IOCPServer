@@ -103,17 +103,6 @@ bool Player::UpdateItemGridPoint(shared_ptr<Item> item, const int itemID, GridPo
 	const GridPoint addedPoint = item->gridPoint;
 	GridPoint gridSize = item->itemInfo.itemGridSize;
 
-	for (int r = addedPoint.y; r < addedPoint.y + gridSize.y; ++r)
-	{
-		for (int c = addedPoint.x; c < addedPoint.x + gridSize.x; ++c)
-		{
-			if (IsGridValid(r, c) == false || inventoryGrids[r][c] != itemID)
-			{
-				return false;
-			}
-		}
-	}
-
 	if (isRotated != item->isRotated) 
 		gridSize = { gridSize.y, gridSize.x };
 	
@@ -132,8 +121,7 @@ bool Player::UpdateItemGridPoint(shared_ptr<Item> item, const int itemID, GridPo
 
 		if (isRotated != item->isRotated)
 			item->Rotate();
-		AddItem(pointToAdd, item->itemInfo.itemGridSize, itemID);
-		item->gridPoint = pointToAdd;
+		AddItem(item, pointToAdd, item->itemInfo.itemGridSize, itemID);
 
 		return true;
 	}
@@ -143,7 +131,7 @@ bool Player::UpdateItemGridPoint(shared_ptr<Item> item, const int itemID, GridPo
 	}
 }
 
-bool Player::TryAddItem(shared_ptr<Item> item, const int itemID, GridPoint& addedPoint)
+bool Player::TryAddItem(shared_ptr<Item> item, const int itemID)
 {
 	GridPoint gridSize = item->itemInfo.itemGridSize;
 	for (int r = 0; r < rows; ++r)
@@ -152,9 +140,7 @@ bool Player::TryAddItem(shared_ptr<Item> item, const int itemID, GridPoint& adde
 		{
 			if (IsPitInInventory(c + gridSize.x, r + gridSize.y) && IsRoomAvailable({ c, r }, gridSize, itemID))
 			{
-				AddItem({ c,r }, gridSize, itemID);
-				addedPoint = { c,r };
-				item->gridPoint = addedPoint;
+				AddItem(item, { c,r }, gridSize, itemID);
 				return true;
 			}
 		}
@@ -165,9 +151,7 @@ bool Player::TryAddItem(shared_ptr<Item> item, const int itemID, GridPoint& adde
 		{
 			if (IsPitInInventory(c + gridSize.y, r + gridSize.x) && IsRoomAvailable({ c, r }, {gridSize.y, gridSize.x}, itemID))
 			{
-				AddItem({ c, r}, { gridSize.y, gridSize.x }, itemID);
-				addedPoint = { c,r };
-				item->gridPoint = addedPoint;
+				AddItem(item, { c, r}, { gridSize.y, gridSize.x }, itemID);
 				item->isRotated = true;
 				return true;
 			}
@@ -176,8 +160,18 @@ bool Player::TryAddItem(shared_ptr<Item> item, const int itemID, GridPoint& adde
 	return false;
 }
 
-void Player::AddItem(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemID)
+void Player::AddItem(shared_ptr<Item> item, const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemID)
 {
+	if (items.find(itemID) != items.end())
+	{
+		items[itemID].UnEquip();
+	}
+	else
+	{
+		items.emplace(itemID, PossessedItem(itemID, topLeftPoint));
+	}
+
+	item->gridPoint = topLeftPoint;
 	for (int r = topLeftPoint.y; r < topLeftPoint.y + gridSize.y; ++r)
 	{
 		for (int c = topLeftPoint.x; c < topLeftPoint.x + gridSize.x; ++c)
@@ -188,11 +182,10 @@ void Player::AddItem(const GridPoint& topLeftPoint, const GridPoint& gridSize, c
 	PrintInventoryStatus();
 }
 
-void Player::DropItem(shared_ptr<Item> item)
+void Player::RemoveItemInInventory(shared_ptr<Item> item, const int itemID)
 {
 	const GridPoint addedPoint = item->gridPoint;
 	const GridPoint gridSize = item->itemInfo.itemGridSize;
-
 	for (int r = addedPoint.y; r < addedPoint.y + gridSize.y; ++r)
 	{
 		for (int c = addedPoint.x; c < addedPoint.x + gridSize.x; ++c)
@@ -201,6 +194,30 @@ void Player::DropItem(shared_ptr<Item> item)
 		}
 	}
 	item->gridPoint = { -1,-1 };
+}
+
+void Player::RemoveItem(const int itemID)
+{
+	items.erase(itemID);
+}
+
+bool Player::IsPlayerHasItem(const int itemID)
+{
+	if (items.find(itemID) != items.end())
+		return true;
+	else
+		return false;
+}
+
+void Player::PlayerEquipItem(shared_ptr<Item> item, const int itemID, const int slotNumber)
+{
+	RemoveItemInInventory(item, itemID);
+	items[itemID].Equip(slotNumber);
+}
+
+const unordered_map<int, PossessedItem>& Player::GetInventoryStatus() const
+{
+	return items;
 }
 
 bool Player::IsRoomAvailable(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemID)

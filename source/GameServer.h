@@ -2,6 +2,7 @@
 #include "IOCPServer.h"
 #include <unordered_map>
 #include <memory>
+#include "Structs/PlayerItems.h"
 
 class ZombieManager;
 class ItemManager;
@@ -28,6 +29,8 @@ protected:
 	void InitializeZombieInfo();
 
 	virtual void HandleDisconnectedClient(SocketInfo* socketInfo) override;
+
+	void SavePlayerInfo(const int playerNumber);
 
 	void RemovePlayerInfo(const int playerNumber);
 

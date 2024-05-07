@@ -31,6 +31,7 @@ enum class EPacketType
 	ZOMBIEDEAD,
 	PLAYERDEAD,
 	SPAWNITEM,
+	PLAYERINFO,
 };
 
 

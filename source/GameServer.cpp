@@ -166,6 +166,8 @@ void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
 
 	cout << "[Log] : " << socketInfo->number << "번 클라이언트 (ID : " << playerIDMap[socketInfo->number]  << ") 접속 종료\n";
 
+	// 플레이어가 가진 아이템들 처리
+	SavePlayerInfo(socketInfo->number);
 	RemovePlayerInfo(socketInfo->number);
 	
 	// 참조 카운트 확인
@@ -173,6 +175,27 @@ void GameServer::HandleDisconnectedClient(SocketInfo* socketInfo)
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream, socketInfo->number);
 	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::SavePlayerInfo(const int playerNumber)
+{
+	auto& playerInventoryStatus = playerMap[playerNumber]->GetInventoryStatus();
+	vector<PlayerItems> playerItems;
+	for (auto& itemStatus : playerInventoryStatus)
+	{
+		PlayerItems playerItem;
+		auto item = itemManager->GetItem(itemStatus.first);
+		playerItem.itemID = itemStatus.first;
+		playerItem.quantity = item->itemInfo.count;
+		playerItem.topLeftX = item->gridPoint.x;
+		playerItem.topLeftY = item->gridPoint.y;
+		playerItem.isRotated = item->isRotated;
+		playerItem.isEquipped = itemStatus.second.isEquipped;
+		playerItem.equippedSlotNumber = itemStatus.second.slotNumber;
+
+		playerItems.push_back(playerItem);
+	}
+	dbConnector->SavePlayerStatus(playerIDMap[playerNumber], playerItems);
 }
 
 void GameServer::RemovePlayerInfo(const int playerNumber)
@@ -224,11 +247,35 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 {
 	cout << "[Log] : " << socketInfo->number << "번 클라이언트 게임 맵에 접속\n";
 
+	vector<PlayerItems> playerItems;
+	dbConnector->GetPlayersItems("hyk3662", playerItems);
+
 	EnterCriticalSection(&critsecPlayerInfo);
 
 	// 기존 플레이어들의 정보를 방금 접속한 플레이어에게 보낼 스트림에 저장
 	stringstream initialInfoStream;
 	initialInfoStream << static_cast<int>(EPacketType::INITIALINFO) << "\n";
+
+	//SaveZombieInfoToPacket(initialInfoStream);	// 좀비 정보 직렬화
+
+	SaveItemInfoToPacket(initialInfoStream);	// 아이템 정보 직렬화
+
+	initialInfoStream << static_cast<int>(EPacketType::PLAYERINFO) << "\n";
+	initialInfoStream << playerItems.size() << "\n";
+
+	playerMap[socketInfo->number] = make_shared<Player>(socketInfo->number);
+	playerMap[socketInfo->number]->PlayerInGameMap();
+	auto player = playerMap[socketInfo->number];
+
+	for (PlayerItems& playerItem : playerItems)
+	{
+		auto item = itemManager->GetItem(playerItem.itemID);
+		if (playerItem.isRotated) item->Rotate();
+		player->AddItem(item, { playerItem.topLeftX, playerItem.topLeftY }, item->itemInfo.itemGridSize, playerItem.itemID);
+
+		initialInfoStream << playerItem;
+	}
+
 	initialInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
 	initialInfoStream << playerMap.size() << "\n";				// 플레이어 수
 	for (auto& p : playerMap)
@@ -236,24 +283,19 @@ void GameServer::SpawnOtherPlayers(SocketInfo* socketInfo, stringstream& recvStr
 		initialInfoStream << playerIDMap[p.first] << "\n";		// 플레이어 아이디
 		p.second->SerializeData(initialInfoStream);				// 플레이어 정보
 	}
-	//SaveZombieInfoToPacket(initialInfoStream);	// 좀비 정보 직렬화
-	SaveItemInfoToPacket(initialInfoStream);	// 아이템 정보 직렬화
 	Send(socketInfo, initialInfoStream);
 
-	playerMap[socketInfo->number] = make_shared<Player>(socketInfo->number);
-	playerMap[socketInfo->number]->PlayerInGameMap();
-	shared_ptr<Player> playerPtr = playerMap[socketInfo->number];
-	playerPtr->RegisterWrestlingCallback(ProcessPlayerWrestlingStart);
-	playerPtr->RegisterPlayerDeadCallback(ProcessPlayerDead);
+	player->RegisterWrestlingCallback(ProcessPlayerWrestlingStart);
+	player->RegisterPlayerDeadCallback(ProcessPlayerDead);
 	// 방금 접속한 플레이어의 정보를 역직렬화
-	playerPtr->DeserializeData(recvStream);
+	player->DeserializeData(recvStream);
 
 	// 방금 접속한 플레이어의 정보를 기존 플레이어들에게 보낼 스트림에 저장 
 	stringstream newPlayerInfoStream;
 	newPlayerInfoStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
 	newPlayerInfoStream << 1 << "\n";
 	newPlayerInfoStream << playerIDMap[socketInfo->number] << "\n";
-	playerPtr->SerializeData(newPlayerInfoStream);
+	player->SerializeData(newPlayerInfoStream);
 
 	// 기존의 플레이어들에게 방금 접속한 플레이어 정보 전송
 	Broadcast(newPlayerInfoStream, socketInfo->number);
@@ -404,12 +446,9 @@ void GameServer::PlayerItemPickUp(SocketInfo* socketInfo, stringstream& recvStre
 	// ************************************************
 
 	auto item = itemManager->GetItem(itemID);
-	GridPoint addedPoint;
-	const bool result = playerMap[socketInfo->number]->TryAddItem(item, itemID, addedPoint);
+	const bool result = playerMap[socketInfo->number]->TryAddItem(item, itemID);
 
 	//itemManager->SetItemStateToDeactivated(itemID);
-
-	cout << "result : " << result << endl;
 
 	if (result)
 	{
@@ -423,10 +462,13 @@ void GameServer::PlayerItemPickUp(SocketInfo* socketInfo, stringstream& recvStre
 		LeaveCriticalSection(&critsecPlayerInfo);
 
 		sendStream << item->isRotated << "\n";
-		sendStream << addedPoint.x << "\n";
-		sendStream << addedPoint.y << "\n";
+		sendStream << item->gridPoint.x << "\n";
+		sendStream << item->gridPoint.y << "\n";
 
 		Send(socketInfo, sendStream);
+		
+		//PlayerItems playerItems{ itemID, item->itemInfo.count, item->gridPoint.x, item->gridPoint.y, item->isRotated, 0, -1 };
+		//dbConnector->PlayerPickedUpItem(playerIDMap[socketInfo->number], playerItems);
 	}
 }
 
@@ -435,52 +477,54 @@ void GameServer::PlayerItemGridPointUpdate(SocketInfo* socketInfo, stringstream&
 	int itemID, xPoint, yPoint;
 	bool isRotated;
 	recvStream >> itemID >> xPoint >> yPoint >> isRotated;
-
-	// DB에 아이템 있는지 검사
 	
 	// ************************************************
 	// * 아이템이 해당 인덱스에 위치할 수 있는지 검사 *
 	// ************************************************
 
-	auto item = itemManager->GetItem(itemID);
-	GridPoint pointToAdd = { xPoint,yPoint };
-	const bool result = playerMap[socketInfo->number]->UpdateItemGridPoint(item, itemID, pointToAdd, isRotated);
+	bool isPlayerHasItem = playerMap[socketInfo->number]->IsPlayerHasItem(itemID);
 
-	stringstream sendStream;
-	sendStream << static_cast<int>(EPacketType::ITEMGRIDPOINTUPDATE) << "\n";
-	sendStream << itemID << "\n";
-
-	if (result)
+	if (isPlayerHasItem)
 	{
-		sendStream << xPoint << "\n";
-		sendStream << yPoint << "\n";
-	}
-	else
-	{
-		sendStream << item->gridPoint.x << "\n";
-		sendStream << item->gridPoint.y << "\n";
-	}
-	sendStream << item->isRotated << "\n";
+		auto item = itemManager->GetItem(itemID);
+		GridPoint pointToAdd = { xPoint,yPoint };
+		const bool result = playerMap[socketInfo->number]->UpdateItemGridPoint(item, itemID, pointToAdd, isRotated);
 
-	Send(socketInfo, sendStream);
+		stringstream sendStream;
+		sendStream << static_cast<int>(EPacketType::ITEMGRIDPOINTUPDATE) << "\n";
+		sendStream << itemID << "\n";
+
+		if (result)
+		{
+			sendStream << xPoint << "\n";
+			sendStream << yPoint << "\n";
+		}
+		else
+		{
+			sendStream << item->gridPoint.x << "\n";
+			sendStream << item->gridPoint.y << "\n";
+		}
+		sendStream << item->isRotated << "\n";
+
+		Send(socketInfo, sendStream);
+	}
 }
 
 void GameServer::PlayerItemEquip(SocketInfo* socketInfo, stringstream& recvStream)
 {
-	int itemID, boxNumber;
-	recvStream >> itemID >> boxNumber;
-
-	// DB에 아이템 있는지 검사 및 장비 칸 검사
+	int itemID, slotNumber;
+	recvStream >> itemID >> slotNumber;
 
 	// ************************************************
 	// *플레이어가 해당 아이템을 장착할 수 있는지 검사*
 	// 장착할 수 있으면 아이템 매니저 및 플레이어에서 관련 처리
 	// 결과 bool값 리턴
-	// true : 브로드캐스트
+	// true  : 브로드캐스트
 	// false : 해당 플레이어에게만 결과 전송
 	// ************************************************
 
-	bool result = true;
+	bool result = playerMap[socketInfo->number]->IsPlayerHasItem(itemID);
+
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::ITEMTOEQUIP) << "\n";
 	sendStream << socketInfo->number << "\n";
@@ -488,12 +532,15 @@ void GameServer::PlayerItemEquip(SocketInfo* socketInfo, stringstream& recvStrea
 
 	if (result)
 	{
+		auto item = itemManager->GetItem(itemID);
+		playerMap[socketInfo->number]->PlayerEquipItem(item, itemID, slotNumber);
+
 		EnterCriticalSection(&critsecPlayerInfo);
 		Broadcast(sendStream, socketInfo->number);
 		LeaveCriticalSection(&critsecPlayerInfo);
 	}
 
-	sendStream << boxNumber << "\n";
+	sendStream << slotNumber << "\n";
 	sendStream << result << "\n";
 	Send(socketInfo, sendStream);
 }
@@ -503,15 +550,14 @@ void GameServer::PlayerItemDrop(SocketInfo* socketInfo, stringstream& recvStream
 	int itemID;
 	recvStream >> itemID;
 
-	// DB에 아이템 있는지 검사
+	bool result = playerMap[socketInfo->number]->IsPlayerHasItem(itemID);
 
-	// ************************************************
-	// * 플레이어가 해당 아이템을 버릴 수 있는지 검사 *
-	// ************************************************
-
-	//버릴 수 있으면
-	auto item = itemManager->GetItem(itemID);
-	playerMap[socketInfo->number]->DropItem(item);
+	if (result)
+	{
+		auto item = itemManager->GetItem(itemID);
+		playerMap[socketInfo->number]->RemoveItemInInventory(item, itemID);
+		playerMap[socketInfo->number]->RemoveItem(itemID);
+	}
 
 	// itemManager 아이템 활성화
 
