@@ -12,7 +12,6 @@ struct Item
 	ItemInfo itemInfo;
 	Vector3D location;
 	bool isRotated = false;
-	GridPoint gridPoint;
 	
 	std::stringstream concreteInfoStream;
 

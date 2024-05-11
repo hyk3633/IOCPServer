@@ -183,7 +183,7 @@ void IOCPServer::WorkerThread()
 		}
 		else
 		{
-			cout << "[Error] : Invalid packet type!\n";
+			cout << "[Error] : Invalid packet type! ( " << packetType << " )\n";
 		}
 
 		Recv(recvSocketInfo);

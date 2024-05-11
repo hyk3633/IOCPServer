@@ -2,7 +2,8 @@
 #include "IOCPServer.h"
 #include <unordered_map>
 #include <memory>
-#include "Structs/PlayerItems.h"
+#include "Structs/PossessedItem.h"
+#include "Structs/EquippedItem.h"
 
 class ZombieManager;
 class ItemManager;
@@ -38,7 +39,13 @@ protected:
 
 	static void Login(SocketInfo*, std::stringstream&);
 
-	static void SpawnOtherPlayers(SocketInfo*, std::stringstream&);
+	static void NewPlayerAccessToGameMap(SocketInfo*, std::stringstream&);
+
+	static void SerializeOthersToNewPlayer(const int playerNumber, std::stringstream&);
+
+	static void SerializePlayersEquippedItems(shared_ptr<Player> player, std::stringstream&);
+
+	static void SerializeNewPlayerToOthers(shared_ptr<Player> player, const int playerNumber, std::stringstream&);
 
 	static void SaveZombieInfoToPacket(std::stringstream&);
 
@@ -64,7 +71,11 @@ protected:
 
 	static void PlayerItemEquip(SocketInfo*, std::stringstream&);
 
+	static void PlayerUnequipItem(SocketInfo*, std::stringstream&);
+
 	static void PlayerItemDrop(SocketInfo*, std::stringstream&);
+
+	static void PlayerDropEquippedItem(SocketInfo*, std::stringstream&);
 
 	static void Broadcast(std::stringstream&, const int skipNumber = -1);
 

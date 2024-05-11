@@ -6,34 +6,13 @@
 #include "../Character/Character.h"
 #include "../Enums/WrestleState.h"
 #include "../Structs/GridPoint.h"
-#include "../Structs/PlayerItems.h"
+#include "../Structs/PossessedItem.h"
+#include "../Structs/EquippedItem.h"
 #include "../Item/Item.h"
 
 typedef void(*WrestlingCallback)(int);
 
 typedef void(*PlayerDeadCallback)(int);
-
-struct PossessedItem
-{
-	PossessedItem() : itemID(-1), addedPoint(), isEquipped(false), slotNumber(-1) {}
-	PossessedItem(const int id, const GridPoint& point) : itemID(id), addedPoint(point), isEquipped(false), slotNumber(-1) {}
-	int itemID;
-	GridPoint addedPoint;
-	bool isEquipped;
-	int slotNumber;
-
-	void Equip(const int number)
-	{
-		isEquipped = true;
-		slotNumber = number;
-	}
-
-	void UnEquip()
-	{
-		isEquipped = false;
-		slotNumber = -1;
-	}
-};
 
 class Player : public Character, public std::enable_shared_from_this<Player>
 {
@@ -81,29 +60,45 @@ public:
 
 	inline bool GetIsDead() const { return isDead; }
 
-	bool UpdateItemGridPoint(shared_ptr<Item> item, const int itemID, GridPoint& pointToAdd, const bool isRotated);
+	bool UpdateItemGridPoint(shared_ptr<Item> item, const string& itemID, GridPoint& pointToAdd, const bool isRotated);
 
-	bool TryAddItem(shared_ptr<Item> item, const int itemID);
+	bool TryAddItem(shared_ptr<Item> item, const string& itemID);
 
-	void AddItem(shared_ptr<Item> item, const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemID);
+	bool TryAddItemAt(shared_ptr<Item> item, const string& itemID, GridPoint& pointToAdd);
 
-	void RemoveItemInInventory(shared_ptr<Item> item, const int itemID);
+	void AddItem(const GridPoint& topLeftPoint, const GridPoint& gridSize, const string& itemID);
 
-	void RemoveItem(const int itemID);
+	void RemoveItemGrid(const GridPoint& addedPoint, const GridPoint& gridSize);
 
-	bool IsPlayerHasItem(const int itemID);
+	bool IsPlayerHasItemInInventory(const string& itemID);
 
-	void PlayerEquipItem(shared_ptr<Item> item, const int itemID, const int slotNumber);
+	bool IsPlayerHasItemInEquipment(const string& itemID);
 
-	const unordered_map<int, PossessedItem>& GetInventoryStatus() const;
+	void RemoveItemInInventory(shared_ptr<Item> item, const string& itemID);
+
+	void RemoveItemInEquipment(const string& itemID);
+
+	void ItemEquipFromInventory(shared_ptr<Item> item, const string& itemID, const int slotNumber);
+
+	void ItemEquipInitialize(const string& itemID, const int slotNumber);
+
+	void PlayerUnEquipItem(shared_ptr<Item> item, const string& itemID);
+
+	GridPoint GetItemsAddedPoint(const string& itemID);
+
+	unordered_map<string, GridPoint>& GetPossessedItems();
+
+	unordered_map<string, int>& GetEquippedItems();
 
 protected:
 
-	bool IsRoomAvailable(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemID);
+	void AddItemToIDNumberMap(const string& itemID);
 
-	bool IsPitInInventory(const int ySize, const int xSize);
+	bool IsRoomAvailable(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemIDNumber = -1);
 
-	bool IsGridValid(const int y, const int x);
+	bool IsPitInInventory(const int xSize, const int ySize);
+
+	bool IsGridValid(const int x, const int y);
 
 	void PrintInventoryStatus();
 
@@ -143,9 +138,17 @@ private:
 
 	// 인벤토리
 
-	unordered_map<int, PossessedItem> items;
+	// key : itemID, value : addedPoint
+	unordered_map<string, GridPoint> possessedItems;
+
+	// key : itemID, value : slotNumber
+	unordered_map<string, int> equippedItems;
 
 	vector<vector<int>> inventoryGrids;
+
+	unordered_map<string, int> itemIDNumberMap;
+
+	int lastIDNumber = 0;
 
 	// 하드코딩 하지말고 입력받기
 	int columns = 6;

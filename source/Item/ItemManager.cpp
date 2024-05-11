@@ -13,53 +13,108 @@ ItemManager::ItemManager()
 
 	for (int i = 0; i < 4; i++)
 	{
+		const string itemID = MakeItemUUID();
 		jsonComponent->GetItemCommonInfo(i, itemInfo);
 		jsonComponent->GetItemConcreteInfo(i, itemInfo.itemType, concreteInfoStream);
-		itemMap[i] = make_shared<Item>(EItemState::Activated, itemInfo, concreteInfoStream, Vector3D{ 310,-220 + (float)i * 50,40 });
+		itemMap[itemID] = make_shared<Item>(EItemState::Activated, itemInfo, concreteInfoStream, Vector3D{ 310,-220 + (float)i * 50,40 });
 
-		activatedItemMap[i] = itemMap[i];
+		activatedItemMap[itemID] = itemMap[itemID];
 
 		concreteInfoStream.str() = "";
 	}
 }
 
-shared_ptr<Item> ItemManager::GetItem(const int itemID)
+shared_ptr<Item> ItemManager::GetItem(const string& itemID)
 {
 	return itemMap[itemID];
 }
 
-void ItemManager::SetItemStateToActivated(const int itemNumber)
+void ItemManager::RemoveItem(const string& itemID)
 {
-	lock_guard<mutex> lock(itemMutex);
-	itemMap[itemNumber]->state = EItemState::Activated;
-	if (deactivatedItemMap.find(itemNumber) != deactivatedItemMap.end())
-	{
-		deactivatedItemMap.erase(itemNumber);
-	}
-	activatedItemMap[itemNumber] = itemMap[itemNumber];
+	itemMap.erase(itemID);
 }
 
-void ItemManager::SetItemStateToDeactivated(const int itemNumber)
+void ItemManager::SetItemStateToActivated(const string& itemID)
 {
 	lock_guard<mutex> lock(itemMutex);
-	itemMap[itemNumber]->state = EItemState::Deactivated;
-	if (activatedItemMap.find(itemNumber) != activatedItemMap.end())
+	itemMap[itemID]->state = EItemState::Activated;
+	if (deactivatedItemMap.find(itemID) != deactivatedItemMap.end())
 	{
-		activatedItemMap.erase(itemNumber);
+		deactivatedItemMap.erase(itemID);
 	}
-	deactivatedItemMap[itemNumber] = itemMap[itemNumber];
+	activatedItemMap[itemID] = itemMap[itemID];
+}
+
+void ItemManager::SetItemStateToDeactivated(const string& itemID)
+{
+	lock_guard<mutex> lock(itemMutex);
+	itemMap[itemID]->state = EItemState::Deactivated;
+	if (activatedItemMap.find(itemID) != activatedItemMap.end())
+	{
+		activatedItemMap.erase(itemID);
+	}
+	deactivatedItemMap[itemID] = itemMap[itemID];
 }
 
 void ItemManager::SaveItemInfoToPacket(std::ostream& stream)
 {
 	lock_guard<mutex> lock(itemMutex);
 
-	// 아이템의 상태(enum)와 소유 상태인 경우 소유자 id도 전송
 	stream << itemMap.size() << "\n";
 	for (auto& kv : itemMap)
 	{
 		stream << kv.first << "\n";
 		stream << kv.second;
 	}
+}
+
+void ItemManager::MakePlayersPossessedItems(const vector<PossessedItem>& possessedItems)
+{
+	stringstream concreteInfoStream;
+	ItemInfo itemInfo;
+
+	for (auto& possessed : possessedItems)
+	{
+		jsonComponent->GetItemCommonInfo(possessed.itemKey, itemInfo);
+		jsonComponent->GetItemConcreteInfo(possessed.itemKey, itemInfo.itemType, concreteInfoStream);
+
+		itemInfo.count = possessed.quantity;
+
+		itemMap[possessed.itemID] = make_shared<Item>(EItemState::Acquired, itemInfo, concreteInfoStream, Vector3D{ 0,0,0 });
+		
+		if (possessed.isRotated)
+			itemMap[possessed.itemID]->Rotate();
+
+		concreteInfoStream.str() = "";
+	}
+
+	// deactivate ?
+	//activatedItemMap[itemID] = itemMap[itemID];
+}
+
+void ItemManager::MakePlayersEquippedItems(const vector<EquippedItem>& equippedItems)
+{
+	stringstream concreteInfoStream;
+	ItemInfo itemInfo;
+
+	for (auto& equipped : equippedItems)
+	{
+		jsonComponent->GetItemCommonInfo(equipped.itemKey, itemInfo);
+		jsonComponent->GetItemConcreteInfo(equipped.itemKey, itemInfo.itemType, concreteInfoStream);
+
+		itemMap[equipped.itemID] = make_shared<Item>(EItemState::Acquired, itemInfo, concreteInfoStream, Vector3D{ 0,0,0 });
+
+		concreteInfoStream.str() = "";
+	}
+
+	// deactivate ?
+	//activatedItemMap[itemID] = itemMap[itemID];
+}
+
+string ItemManager::MakeItemUUID()
+{
+	UuidCreate(&uuid);
+	UuidToStringA(&uuid, (RPC_CSTR*)&itemUuid);
+	return itemUuid;
 }
 

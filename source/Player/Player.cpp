@@ -54,7 +54,6 @@ void Player::RegisterPlayerDeadCallback(PlayerDeadCallback pdc)
 
 void Player::SerializeData(ostream& stream)
 {
-	stream << GetNumber() << "\n";
 	SerializeLocation(stream);
 	SerializeRotation(stream);
 	stream << velocity;
@@ -98,30 +97,27 @@ void Player::SetZombieNumberWrestleWith(const int number)
 	zombieNumberWrestleWith = number;
 }
 
-bool Player::UpdateItemGridPoint(shared_ptr<Item> item, const int itemID, GridPoint& pointToAdd, const bool isRotated)
+bool Player::UpdateItemGridPoint(shared_ptr<Item> item, const string& itemID, GridPoint& pointToAdd, const bool isRotated)
 {
-	const GridPoint addedPoint = item->gridPoint;
+	const GridPoint addedPoint = possessedItems[itemID];
 	GridPoint gridSize = item->itemInfo.itemGridSize;
 
 	if (isRotated != item->isRotated) 
 		gridSize = { gridSize.y, gridSize.x };
+
+	const int itemIDNumber = itemIDNumberMap[itemID];
 	
-	if (IsRoomAvailable(pointToAdd, gridSize, itemID))
+	if (IsRoomAvailable(pointToAdd, gridSize, itemIDNumber))
 	{
 		if (isRotated != item->isRotated)
 			gridSize = { gridSize.y, gridSize.x };
 
-		for (int r = addedPoint.y; r < addedPoint.y + gridSize.y; ++r)
-		{
-			for (int c = addedPoint.x; c < addedPoint.x + gridSize.x; ++c)
-			{
-				inventoryGrids[r][c] = EMPTY;
-			}
-		}
+		RemoveItemGrid(addedPoint, gridSize);
 
 		if (isRotated != item->isRotated)
 			item->Rotate();
-		AddItem(item, pointToAdd, item->itemInfo.itemGridSize, itemID);
+
+		AddItem(pointToAdd, item->itemInfo.itemGridSize, itemID);
 
 		return true;
 	}
@@ -131,28 +127,30 @@ bool Player::UpdateItemGridPoint(shared_ptr<Item> item, const int itemID, GridPo
 	}
 }
 
-bool Player::TryAddItem(shared_ptr<Item> item, const int itemID)
+bool Player::TryAddItem(shared_ptr<Item> item, const string& itemID)
 {
 	GridPoint gridSize = item->itemInfo.itemGridSize;
 	for (int r = 0; r < rows; ++r)
 	{
 		for (int c = 0; c < columns; ++c)
 		{
-			if (IsPitInInventory(c + gridSize.x, r + gridSize.y) && IsRoomAvailable({ c, r }, gridSize, itemID))
+			if (IsPitInInventory(c + gridSize.x, r + gridSize.y) && IsRoomAvailable({ c, r }, gridSize))
 			{
-				AddItem(item, { c,r }, gridSize, itemID);
+				AddItem({ c,r }, gridSize, itemID);
 				return true;
 			}
 		}
 	}
+
+	gridSize = { gridSize.y, gridSize.x };
 	for (int r = 0; r < rows; ++r)
 	{
 		for (int c = 0; c < columns; ++c)
 		{
-			if (IsPitInInventory(c + gridSize.y, r + gridSize.x) && IsRoomAvailable({ c, r }, {gridSize.y, gridSize.x}, itemID))
+			if (IsPitInInventory(c + gridSize.y, r + gridSize.x) && IsRoomAvailable({ c, r }, gridSize))
 			{
-				AddItem(item, { c, r}, { gridSize.y, gridSize.x }, itemID);
-				item->isRotated = true;
+				item->Rotate();
+				AddItem({ c, r}, gridSize, itemID);
 				return true;
 			}
 		}
@@ -160,32 +158,36 @@ bool Player::TryAddItem(shared_ptr<Item> item, const int itemID)
 	return false;
 }
 
-void Player::AddItem(shared_ptr<Item> item, const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemID)
+bool Player::TryAddItemAt(shared_ptr<Item> item, const string& itemID, GridPoint& pointToAdd)
 {
-	if (items.find(itemID) != items.end())
+	if (IsRoomAvailable(pointToAdd, item->itemInfo.itemGridSize))
 	{
-		items[itemID].UnEquip();
+		AddItem(pointToAdd, item->itemInfo.itemGridSize, itemID);
+		return true;
 	}
 	else
 	{
-		items.emplace(itemID, PossessedItem(itemID, topLeftPoint));
+		return false;
 	}
+}
 
-	item->gridPoint = topLeftPoint;
+void Player::AddItem(const GridPoint& topLeftPoint, const GridPoint& gridSize, const string& itemID)
+{
+	possessedItems[itemID] = topLeftPoint;
+	AddItemToIDNumberMap(itemID);
+	const int itemIDNumber = itemIDNumberMap[itemID];
 	for (int r = topLeftPoint.y; r < topLeftPoint.y + gridSize.y; ++r)
 	{
 		for (int c = topLeftPoint.x; c < topLeftPoint.x + gridSize.x; ++c)
 		{
-			inventoryGrids[r][c] = itemID;
+			inventoryGrids[r][c] = itemIDNumber;
 		}
 	}
 	PrintInventoryStatus();
 }
 
-void Player::RemoveItemInInventory(shared_ptr<Item> item, const int itemID)
+void Player::RemoveItemGrid(const GridPoint& addedPoint, const GridPoint& gridSize)
 {
-	const GridPoint addedPoint = item->gridPoint;
-	const GridPoint gridSize = item->itemInfo.itemGridSize;
 	for (int r = addedPoint.y; r < addedPoint.y + gridSize.y; ++r)
 	{
 		for (int c = addedPoint.x; c < addedPoint.x + gridSize.x; ++c)
@@ -193,52 +195,96 @@ void Player::RemoveItemInInventory(shared_ptr<Item> item, const int itemID)
 			inventoryGrids[r][c] = EMPTY;
 		}
 	}
-	item->gridPoint = { -1,-1 };
 }
 
-void Player::RemoveItem(const int itemID)
+bool Player::IsPlayerHasItemInInventory(const string& itemID)
 {
-	items.erase(itemID);
-}
-
-bool Player::IsPlayerHasItem(const int itemID)
-{
-	if (items.find(itemID) != items.end())
+	if (possessedItems.count(itemID))
 		return true;
 	else
 		return false;
 }
 
-void Player::PlayerEquipItem(shared_ptr<Item> item, const int itemID, const int slotNumber)
+bool Player::IsPlayerHasItemInEquipment(const string& itemID)
 {
-	RemoveItemInInventory(item, itemID);
-	items[itemID].Equip(slotNumber);
+	if (equippedItems.find(itemID) != equippedItems.end())
+		return true;
+	else
+		return false;
 }
 
-const unordered_map<int, PossessedItem>& Player::GetInventoryStatus() const
+void Player::RemoveItemInInventory(shared_ptr<Item> item, const string& itemID)
 {
-	return items;
+	RemoveItemGrid(possessedItems[itemID], item->itemInfo.itemGridSize);
+	possessedItems.erase(itemID);
+	itemIDNumberMap.erase(itemID);
 }
 
-bool Player::IsRoomAvailable(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemID)
+void Player::RemoveItemInEquipment(const string& itemID)
+{
+	equippedItems.erase(itemID);
+	itemIDNumberMap.erase(itemID);
+}
+
+void Player::ItemEquipFromInventory(shared_ptr<Item> item, const string& itemID, const int slotNumber)
+{
+	RemoveItemGrid(possessedItems[itemID], item->itemInfo.itemGridSize);
+	possessedItems.erase(itemID);
+	equippedItems[itemID] = slotNumber;
+}
+
+void Player::ItemEquipInitialize(const string& itemID, const int slotNumber)
+{
+	AddItemToIDNumberMap(itemID);
+	equippedItems[itemID] = slotNumber;
+}
+
+void Player::PlayerUnEquipItem(shared_ptr<Item> item, const string& itemID)
+{
+
+}
+
+GridPoint Player::GetItemsAddedPoint(const string& itemID)
+{
+	return possessedItems[itemID];
+}
+
+unordered_map<string, GridPoint>& Player::GetPossessedItems()
+{
+	return possessedItems;
+}
+
+unordered_map<string, int>& Player::GetEquippedItems()
+{
+	return equippedItems;
+}
+
+void Player::AddItemToIDNumberMap(const string& itemID)
+{
+	itemIDNumberMap[itemID] = lastIDNumber++;
+}
+
+bool Player::IsRoomAvailable(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemIDNumber)
 {
 	for (int r = topLeftPoint.y; r < topLeftPoint.y + gridSize.y; ++r)
 	{
 		for (int c = topLeftPoint.x; c < topLeftPoint.x + gridSize.x; ++c)
 		{
-			if (inventoryGrids[r][c] != EMPTY && inventoryGrids[r][c] != itemID)
+			if (itemIDNumber == -1 && inventoryGrids[r][c] != EMPTY)
+				return false;
+			else if (itemIDNumber != -1 && inventoryGrids[r][c] != EMPTY && inventoryGrids[r][c] != itemIDNumber)
 				return false;
 		}
 	}
 	return true;
 }
 
-bool Player::IsPitInInventory(const int ySize, const int xSize)
+bool Player::IsPitInInventory(const int xSize, const int ySize)
 {
 	return (ySize > 0 && ySize <= rows && xSize > 0 && xSize <= columns);
 }
 
-bool Player::IsGridValid(const int y, const int x)
+bool Player::IsGridValid(const int x, const int y)
 {
 	return (y >= 0 && y < rows && x >= 0 && x < columns);
 }
