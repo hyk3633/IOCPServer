@@ -8,6 +8,7 @@
 #include "../Structs/GridPoint.h"
 #include "../Structs/PossessedItem.h"
 #include "../Structs/EquippedItem.h"
+#include "../Structs/PlayerStatus.h"
 #include "../Item/Item.h"
 
 typedef void(*WrestlingCallback)(int);
@@ -54,6 +55,8 @@ public:
 
 	virtual void TakeDamage(const float damage) override;
 
+	void Heal(const float healingAmount);
+
 	void SetZombieNumberWrestleWith(const int number);
 
 	inline int GetZombieNumberWrestleWith() const { return zombieNumberWrestleWith; }
@@ -89,6 +92,8 @@ public:
 	unordered_map<string, GridPoint>& GetPossessedItems();
 
 	unordered_map<string, int>& GetEquippedItems();
+
+	PlayerStatus GetPlayerStatus() const;
 
 protected:
 

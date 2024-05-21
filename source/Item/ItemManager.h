@@ -5,6 +5,7 @@
 #include "../Structs/Vector3D.h"
 #include "../Structs/PossessedItem.h"
 #include "../Structs/EquippedItem.h"
+#include "../Enums/ItemFunctions.h"
 #include <memory>
 #include <unordered_map>
 #include <sstream>
@@ -12,13 +13,17 @@
 #include <Rpc.h>
 #pragma comment(lib, "Rpcrt4.lib")
 
+struct Item;
 class JsonComponent;
+class Player;
+
+typedef void(*ItemDestroyCallback)(const int, shared_ptr<Item>, const string&);
 
 class ItemManager
 {
 public:
 
-	ItemManager();
+	ItemManager(ItemDestroyCallback idc);
 	~ItemManager() = default;
 
 	shared_ptr<Item> GetItem(const string& itemID);
@@ -35,11 +40,19 @@ public:
 
 	void MakePlayersEquippedItems(const vector<EquippedItem>& equippedItems);
 
+	void UseItem(std::shared_ptr<Player> player, const string& itemID, const int usedAmount);
+
+protected:
+
+	void DestroyItem(const int playerNumber, const string& itemID);
+
 	// 지정된 위치에 아이템 생성하는 함수
 
 protected:
 
 	string MakeItemUUID();
+
+	void Healing(std::shared_ptr<Player> player, const string& itemID);
 
 private:
 
@@ -51,10 +64,14 @@ private:
 
 	std::unordered_map<string, weak_ptr<Item>> activatedItemMap;
 
+	std::unordered_map<EItemMainType, void (ItemManager::*)(std::shared_ptr<Player>, const string&)> itemFunction;
+
 	std::mutex itemMutex;
 
 	UUID uuid;
 
 	char* itemUuid;
+
+	ItemDestroyCallback itemDestroyCb = nullptr;
 
 };

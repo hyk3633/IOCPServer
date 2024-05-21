@@ -87,6 +87,12 @@ protected:
 
 	static void RespawnPlayer(SocketInfo*, std::stringstream&);
 
+	static void ReplicateProjectile(SocketInfo*, std::stringstream&);
+
+	static void PlayerUseItem(SocketInfo*, std::stringstream&);
+
+	static void DestroyItem(const int playerNumber, shared_ptr<Item> item, const string& itemID);
+
 private:
 
 	static CRITICAL_SECTION	critsecPlayerInfo;

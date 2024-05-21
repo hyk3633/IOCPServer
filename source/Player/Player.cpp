@@ -92,6 +92,11 @@ void Player::TakeDamage(const float damage)
 	}
 }
 
+void Player::Heal(const float healingAmount)
+{
+	health = min(health + healingAmount, maxHealth);
+}
+
 void Player::SetZombieNumberWrestleWith(const int number)
 {
 	zombieNumberWrestleWith = number;
@@ -218,6 +223,8 @@ void Player::RemoveItemInInventory(shared_ptr<Item> item, const string& itemID)
 	RemoveItemGrid(possessedItems[itemID], item->itemInfo.itemGridSize);
 	possessedItems.erase(itemID);
 	itemIDNumberMap.erase(itemID);
+
+	PrintInventoryStatus();
 }
 
 void Player::RemoveItemInEquipment(const string& itemID)
@@ -257,6 +264,11 @@ unordered_map<string, GridPoint>& Player::GetPossessedItems()
 unordered_map<string, int>& Player::GetEquippedItems()
 {
 	return equippedItems;
+}
+
+PlayerStatus Player::GetPlayerStatus() const
+{
+	return { health };
 }
 
 void Player::AddItemToIDNumberMap(const string& itemID)

@@ -8,6 +8,16 @@
 #include "../Enums/WeaponType.h"
 
 using std::ostream;
+using std::istream;
+using std::stringstream;
+
+template<typename T> 
+void ParseInfo(stringstream& stream, T& info)
+{
+	stringstream temp;
+	temp << stream.str();
+	temp >> info;
+}
 
 struct ItemInfo
 {
@@ -17,7 +27,7 @@ struct ItemInfo
 	std::string itemName;
 	EItemMainType itemType;
 	GridPoint itemGridSize;
-	int count;
+	int quantity;
 	bool isConsumable;
 	
 };
@@ -33,6 +43,15 @@ struct WeaponInfo
 	{
 		stream << info.attackPower << "\n";
 		stream << static_cast<int>(info.weaponType) << "\n";
+		return stream;
+	}
+
+	friend istream& operator>>(istream& stream, WeaponInfo& info)
+	{
+		stream >> info.attackPower;
+		int type = 0;
+		stream >> type;
+		info.weaponType = static_cast<EWeaponType>(type);
 		return stream;
 	}
 
@@ -58,6 +77,19 @@ struct RangedWeaponInfo : public WeaponInfo
 		return stream;
 	}
 
+	friend istream& operator>>(istream& stream, RangedWeaponInfo& info)
+	{
+		stream >> info.attackPower;
+		int type = 0;
+		stream >> type;
+		info.weaponType = static_cast<EWeaponType>(type);
+		stream >> info.fireRate;
+		stream >> info.recoil;
+		stream >> info.magazine;
+		stream >> info.reloadingSpeed;
+		return stream;
+	}
+
 };
 
 struct RecoveryItemInfo
@@ -74,6 +106,13 @@ struct RecoveryItemInfo
 		return stream;
 	}
 
+	friend istream& operator>>(istream& stream, RecoveryItemInfo& info)
+	{
+		stream >> info.recoveryAmount;
+		stream >> info.usingSpeed;
+		return stream;
+	}
+
 };
 
 struct AmmoItemInfo
@@ -85,6 +124,12 @@ struct AmmoItemInfo
 	friend ostream& operator<<(ostream& stream, AmmoItemInfo& info)
 	{
 		stream << info.ammoType << "\n";
+		return stream;
+	}
+
+	friend istream& operator>>(istream& stream, AmmoItemInfo& info)
+	{
+		stream >> info.ammoType;
 		return stream;
 	}
 

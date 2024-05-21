@@ -43,7 +43,7 @@ bool GameServer::InitializeServer()
 	bool result = IOCPServer::InitializeServer();
 	if (!result) return result;
 
-	itemManager = make_unique<ItemManager>();
+	itemManager = make_unique<ItemManager>(DestroyItem);
 
 	packetCallbacks[EPacketType::SIGNUP]				= SignUp;
 	packetCallbacks[EPacketType::LOGIN]					= Login;
@@ -62,6 +62,8 @@ bool GameServer::InitializeServer()
 	packetCallbacks[EPacketType::ATTACKRESULT]			= ProcessPlayerAttackResult;
 	packetCallbacks[EPacketType::PLAYERRESPAWN]			= RespawnPlayer;
 	packetCallbacks[EPacketType::ZOMBIEHITSME]			= ProcessZombieHitResult;
+	packetCallbacks[EPacketType::PROJECTILE]			= ReplicateProjectile;
+	packetCallbacks[EPacketType::USINGITEM]				= PlayerUseItem;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
@@ -188,7 +190,7 @@ void GameServer::SavePlayerInfo(const int playerNumber)
 	for (auto& itemPair : possessedItems)
 	{
 		auto item = itemManager->GetItem(itemPair.first);
-		dbConnector->SavePlayerInventory(playerID, itemPair.first, item->itemInfo.itemKey, item->itemInfo.count, item->isRotated, itemPair.second);
+		dbConnector->SavePlayerInventory(playerID, itemPair.first, item->itemInfo.itemKey, item->itemInfo.quantity, item->isRotated, itemPair.second);
 		itemManager->RemoveItem(itemPair.first);
 	}
 	
@@ -800,4 +802,44 @@ void GameServer::RespawnPlayer(SocketInfo* socketInfo, stringstream& recvStream)
 		playerMap[socketInfo->number]->SerializeData(sendStream);
 		Broadcast(sendStream);
 	}
+}
+
+void GameServer::ReplicateProjectile(SocketInfo* socketInfo, std::stringstream& recvStream)
+{
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::PROJECTILE) << "\n";
+	sendStream << recvStream.str() << "\n";
+
+	Broadcast(sendStream, socketInfo->number);
+}
+
+void GameServer::PlayerUseItem(SocketInfo* socketInfo, std::stringstream& recvStream)
+{
+	string itemID;
+	int usedAmount = 0;
+	recvStream >> itemID >> usedAmount;
+
+	// 아이템 사용 효과 반영
+	itemManager->UseItem(playerMap[socketInfo->number], itemID, usedAmount);
+
+	stringstream itemUsingStream;
+	itemUsingStream << static_cast<int>(EPacketType::USINGITEM) << "\n";
+	itemUsingStream << socketInfo->number << "\n";
+	itemUsingStream << itemID << "\n";
+
+	Broadcast(itemUsingStream, socketInfo->number);
+
+	stringstream playerStatusStream;
+	auto status = playerMap[socketInfo->number]->GetPlayerStatus();
+	playerStatusStream << static_cast<int>(EPacketType::PLAYERSTATUS) << "\n";
+	playerStatusStream << socketInfo->number << "\n";
+	playerStatusStream << status;
+
+	Broadcast(playerStatusStream);
+}
+
+void GameServer::DestroyItem(const int playerNumber, shared_ptr<Item> item, const string& itemID)
+{
+	// 아이템 파괴
+	playerMap[playerNumber]->RemoveItemInInventory(item, itemID);
 }

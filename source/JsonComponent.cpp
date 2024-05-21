@@ -31,9 +31,15 @@ void JsonComponent::GetItemConcreteInfo(const int itemKey, EItemMainType itemTyp
     switch (itemType)
     {
         case EItemMainType::MeleeWeapon:
-        case EItemMainType::RangedWeapon:
         {
             WeaponInfo info;
+            SaveItemConcreteInfo(item, info);
+            stream << info;
+            break;
+        }
+        case EItemMainType::RangedWeapon:
+        {
+            RangedWeaponInfo info;
             SaveItemConcreteInfo(item, info);
             stream << info;
             break;
@@ -61,7 +67,7 @@ void JsonComponent::SaveItemCommonInfoToStruct(rapidjson::Value& valueObj, ItemI
     itemInfo.itemName      = valueObj["ItemName"].GetString();
     itemInfo.itemType      = static_cast<EItemMainType>(valueObj["ItemType"].GetInt());
     itemInfo.itemGridSize  = GridPoint{ valueObj["ItemGridSize"]["X"].GetInt(), valueObj["ItemGridSize"]["Y"].GetInt() };
-    itemInfo.count         = valueObj["Count"].GetInt();
+    itemInfo.quantity      = valueObj["Count"].GetInt();
     itemInfo.isConsumable  = valueObj["IsConsumable"].GetInt();
 }
 
