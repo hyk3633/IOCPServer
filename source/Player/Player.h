@@ -135,7 +135,7 @@ private:
 
 	// ╫╨ех
 
-	float health = 100;
+	float health = 50;
 
 	float maxHealth = 100;
 

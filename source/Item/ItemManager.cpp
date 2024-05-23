@@ -31,7 +31,10 @@ ItemManager::ItemManager(ItemDestroyCallback idc)
 
 shared_ptr<Item> ItemManager::GetItem(const string& itemID)
 {
-	return itemMap[itemID];
+	if (itemMap.find(itemID) != itemMap.end())
+		return itemMap[itemID];
+	else 
+		return nullptr;
 }
 
 void ItemManager::RemoveItem(const string& itemID)
@@ -116,7 +119,7 @@ void ItemManager::MakePlayersEquippedItems(const vector<EquippedItem>& equippedI
 	//activatedItemMap[itemID] = itemMap[itemID];
 }
 
-void ItemManager::UseItem(shared_ptr<Player> player, const string& itemID, const int usedAmount)
+void ItemManager::UseItem(shared_ptr<Player> player, const string& itemID, const int consumedAmount)
 {
 	if (itemMap.find(itemID) != itemMap.end())
 	{
@@ -127,7 +130,7 @@ void ItemManager::UseItem(shared_ptr<Player> player, const string& itemID, const
 		}
 
 		int itemQuantity = item->itemInfo.quantity;
-		item->itemInfo.quantity = max(itemQuantity - usedAmount, 0);
+		item->itemInfo.quantity = max(itemQuantity - consumedAmount, 0);
 		if (item->itemInfo.quantity == 0)
 		{
 			DestroyItem(player->GetNumber(), itemID);

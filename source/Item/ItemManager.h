@@ -40,7 +40,7 @@ public:
 
 	void MakePlayersEquippedItems(const vector<EquippedItem>& equippedItems);
 
-	void UseItem(std::shared_ptr<Player> player, const string& itemID, const int usedAmount);
+	void UseItem(std::shared_ptr<Player> player, const string& itemID, const int consumedAmount);
 
 protected:
 

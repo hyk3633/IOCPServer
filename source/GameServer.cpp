@@ -242,6 +242,7 @@ void GameServer::Login(SocketInfo* socketInfo, stringstream& recvStream)
 	sendStream << isLoginSuccess << "\n";
 	if (isLoginSuccess)
 	{
+		sendStream << id << "\n";
 		sendStream << socketInfo->number << "\n";
 	}
 	Send(socketInfo, sendStream);
@@ -297,7 +298,6 @@ void GameServer::NewPlayerAccessToGameMap(SocketInfo* socketInfo, stringstream& 
 			auto item = itemManager->GetItem(possessed.itemID);
 			player->AddItem({ possessed.topLeftX,possessed.topLeftY }, item->itemInfo.itemGridSize, possessed.itemID);
 			initialInfoStream << possessed;
-			cout << "possessed : " << possessed.itemKey << endl;
 		}
 	}
 	if (equipmentResult)
@@ -308,7 +308,6 @@ void GameServer::NewPlayerAccessToGameMap(SocketInfo* socketInfo, stringstream& 
 		{
 			player->ItemEquipInitialize(equipped.itemID, equipped.slotNumber);
 			initialInfoStream << equipped;
-			cout << "equipped : " << equipped.itemKey << endl;
 		}
 	}
 
@@ -333,12 +332,22 @@ void GameServer::SerializeOthersToNewPlayer(const int playerNumber, std::strings
 		otherPlayersStream << p.first << "\n";					// 플레이어 번호
 		otherPlayersStream << playerIDMap[p.first] << "\n";		// 플레이어 아이디
 		p.second->SerializeData(otherPlayersStream);			// 플레이어 데이터
+		
+		// 플레이어 스테이터스 : 체력
+		auto status = p.second->GetPlayerStatus();
+		otherPlayersStream << status;
+
+		// 장착 중인 아이템
 		SerializePlayersEquippedItems(p.second, otherPlayersStream);
+
 		count++;
 	}
 	sendStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
 	sendStream << count << "\n";				// 플레이어 수
 	sendStream << otherPlayersStream.str() << "\n";
+
+	cout << playerNumber << "에게 보내는 패킷 : " << endl;
+	cout << otherPlayersStream.str() << endl << endl;
 }
 
 void GameServer::SerializePlayersEquippedItems(shared_ptr<Player> player, std::stringstream& sendStream)
@@ -370,6 +379,12 @@ void GameServer::SerializeNewPlayerToOthers(shared_ptr<Player> player, const int
 	newPlayerInfoStream << playerNumber << "\n";
 	newPlayerInfoStream << playerIDMap[playerNumber] << "\n";
 	player->SerializeData(newPlayerInfoStream);
+
+	// 플레이어 스테이터스 : 체력
+	auto status = player->GetPlayerStatus();
+	newPlayerInfoStream << status;
+
+	// 장착 중인 아이템
 	SerializePlayersEquippedItems(player, newPlayerInfoStream);
 
 	Broadcast(newPlayerInfoStream, playerNumber);
@@ -665,27 +680,30 @@ void GameServer::PlayerItemDrop(SocketInfo* socketInfo, stringstream& recvStream
 	string itemID;
 	recvStream >> itemID;
 
+	stringstream sendStream;
+
+	EnterCriticalSection(&critsecPlayerInfo);
+
 	bool isPlayerHasItem = playerMap[socketInfo->number]->IsPlayerHasItemInInventory(itemID);
+
+	sendStream << static_cast<int>(EPacketType::DROP_ITEM) << "\n";
+	sendStream << socketInfo->number << "\n";
+	sendStream << itemID << "\n";
+	sendStream << isPlayerHasItem << "\n";
+
 	if (isPlayerHasItem)
 	{
 		auto item = itemManager->GetItem(itemID);
 		playerMap[socketInfo->number]->RemoveItemInInventory(item, itemID);
+		sendStream << item->itemInfo.itemKey << "\n";
+		sendStream << item->itemInfo.quantity << "\n";
+		Broadcast(sendStream);
 	}
 	else
 	{
-		bool isPlayerHasEquippedItem = playerMap[socketInfo->number]->IsPlayerHasItemInEquipment(itemID);
-		playerMap[socketInfo->number]->RemoveItemInEquipment(itemID);
+		Send(socketInfo, sendStream);
 	}
-
-	// itemManager 아이템 활성화
-
-	stringstream sendStream;
-	sendStream << static_cast<int>(EPacketType::DROP_ITEM) << "\n";
-	sendStream << socketInfo->number << "\n";
-	sendStream << itemID << "\n";
-
-	EnterCriticalSection(&critsecPlayerInfo);
-	Broadcast(sendStream);
+	
 	LeaveCriticalSection(&critsecPlayerInfo);
 }
 
@@ -816,16 +834,17 @@ void GameServer::ReplicateProjectile(SocketInfo* socketInfo, std::stringstream& 
 void GameServer::PlayerUseItem(SocketInfo* socketInfo, std::stringstream& recvStream)
 {
 	string itemID;
-	int usedAmount = 0;
-	recvStream >> itemID >> usedAmount;
+	int consumedAmount = 0;
+	recvStream >> itemID >> consumedAmount;
 
 	// 아이템 사용 효과 반영
-	itemManager->UseItem(playerMap[socketInfo->number], itemID, usedAmount);
+	itemManager->UseItem(playerMap[socketInfo->number], itemID, consumedAmount);
 
 	stringstream itemUsingStream;
 	itemUsingStream << static_cast<int>(EPacketType::USINGITEM) << "\n";
 	itemUsingStream << socketInfo->number << "\n";
 	itemUsingStream << itemID << "\n";
+	itemUsingStream << consumedAmount << "\n";
 
 	Broadcast(itemUsingStream, socketInfo->number);
 
