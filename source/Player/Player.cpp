@@ -4,7 +4,7 @@ using namespace std;
 
 #define EMPTY -1
 
-Player::Player(const int num) : Character(num)
+Player::Player(const int num, const PlayerInfo& playerInfo) : maxHealth(playerInfo.health), health(playerInfo.health), rows(playerInfo.row), columns(playerInfo.column)
 {
 	inventoryGrids = vector<vector<int>>(rows, vector<int>(columns, EMPTY));
 }
@@ -269,6 +269,23 @@ unordered_map<string, int>& Player::GetEquippedItems()
 PlayerStatus Player::GetPlayerStatus() const
 {
 	return { health };
+}
+
+void Player::SerializePlayerInitialInfo(stringstream& sendStream)
+{
+	sendStream << maxHealth << "\n";
+	sendStream << rows << "\n";
+	sendStream << columns << "\n";
+}
+
+void Player::ArmWeapon(const string& weaponID)
+{
+	armedWeaponID = weaponID;
+}
+
+void Player::DisarmWeapon()
+{
+	armedWeaponID = "";
 }
 
 void Player::AddItemToIDNumberMap(const string& itemID)

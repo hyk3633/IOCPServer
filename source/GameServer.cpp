@@ -20,6 +20,7 @@ unordered_map<int, shared_ptr<Player>>	GameServer::playerMap;
 int										GameServer::playerCount;
 unique_ptr<ZombieManager>				GameServer::zombieManager;
 unordered_map<int, shared_ptr<Zombie>>	GameServer::zombieMap;
+PlayerInfo								GameServer::playerInfo;
 
 unsigned int WINAPI ZombieThreadStart(LPVOID param)
 {
@@ -45,6 +46,8 @@ bool GameServer::InitializeServer()
 
 	itemManager = make_unique<ItemManager>(DestroyItem);
 
+	itemManager->GetPlayerInfo(playerInfo);
+
 	packetCallbacks[EPacketType::SIGNUP]				= SignUp;
 	packetCallbacks[EPacketType::LOGIN]					= Login;
 	packetCallbacks[EPacketType::SPAWNPLAYER]			= NewPlayerAccessToGameMap;
@@ -64,6 +67,9 @@ bool GameServer::InitializeServer()
 	packetCallbacks[EPacketType::ZOMBIEHITSME]			= ProcessZombieHitResult;
 	packetCallbacks[EPacketType::PROJECTILE]			= ReplicateProjectile;
 	packetCallbacks[EPacketType::USINGITEM]				= PlayerUseItem;
+	packetCallbacks[EPacketType::CHANGE_WEAPON]			= PlayerChangedWeapon;
+	packetCallbacks[EPacketType::ARM_WEAPON]			= PlayerArmWeapon;
+	packetCallbacks[EPacketType::DISARM_WEAPON]			= PlayerDisarmWeapon;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
@@ -273,14 +279,17 @@ void GameServer::NewPlayerAccessToGameMap(SocketInfo* socketInfo, stringstream& 
 	EnterCriticalSection(&critsecPlayerInfo);
 
 	// 플레이어 객체 생성
-	playerMap[socketInfo->number] = make_shared<Player>(socketInfo->number);
+	playerMap[socketInfo->number] = make_shared<Player>(socketInfo->number, playerInfo);
 
 	auto player = playerMap[socketInfo->number];
 	player->PlayerInGameMap();
 
 	// 클라이언트에 보낼 패킷 생성
 	stringstream initialInfoStream;
-	initialInfoStream << static_cast<int>(EPacketType::INITIALINFO) << "\n";
+	initialInfoStream << static_cast<int>(EPacketType::WORLDINITIALINFO) << "\n";
+
+	initialInfoStream << static_cast<int>(EPacketType::PLAYERINITIALINFO) << "\n";
+	player->SerializePlayerInitialInfo(initialInfoStream);
 
 	// 좀비 데이터 직렬화
 	//SaveZombieInfoToPacket(initialInfoStream);	
@@ -328,7 +337,9 @@ void GameServer::SerializeOthersToNewPlayer(const int playerNumber, std::strings
 	int count = 0;
 	for (auto& p : playerMap)
 	{
-		if (p.first == playerNumber) continue;
+		if (p.first == playerNumber) 
+			continue;
+
 		otherPlayersStream << p.first << "\n";					// 플레이어 번호
 		otherPlayersStream << playerIDMap[p.first] << "\n";		// 플레이어 아이디
 		p.second->SerializeData(otherPlayersStream);			// 플레이어 데이터
@@ -342,17 +353,19 @@ void GameServer::SerializeOthersToNewPlayer(const int playerNumber, std::strings
 
 		count++;
 	}
-	sendStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
-	sendStream << count << "\n";				// 플레이어 수
-	sendStream << otherPlayersStream.str() << "\n";
-
-	cout << playerNumber << "에게 보내는 패킷 : " << endl;
-	cout << otherPlayersStream.str() << endl << endl;
+	if (count)
+	{
+		sendStream << static_cast<int>(EPacketType::SPAWNPLAYER) << "\n";
+		sendStream << count << "\n"; // 플레이어 수
+		sendStream << otherPlayersStream.str() << "\n";
+	}
 }
 
 void GameServer::SerializePlayersEquippedItems(shared_ptr<Player> player, std::stringstream& sendStream)
 {
 	auto& equippedItems = player->GetEquippedItems();
+	const string armedWeaponID = player->GetArmedWeaponID();
+
 	sendStream << equippedItems.size() << "\n";
 	for (auto& equippedItem : equippedItems)
 	{
@@ -360,6 +373,7 @@ void GameServer::SerializePlayersEquippedItems(shared_ptr<Player> player, std::s
 		sendStream << equippedItem.first << "\n";
 		sendStream << item->itemInfo.itemKey << "\n";
 		sendStream << equippedItem.second << "\n";
+		sendStream << (equippedItem.first == armedWeaponID) << "\n";
 	}
 }
 
@@ -620,6 +634,7 @@ void GameServer::PlayerItemEquip(SocketInfo* socketInfo, stringstream& recvStrea
 	sendStream << static_cast<int>(EPacketType::EQUIP_ITEM) << "\n";
 	sendStream << socketInfo->number << "\n";
 	sendStream << itemID << "\n";
+	sendStream << slotNumber << "\n";
 
 	if (isPlayerHasItem)
 	{
@@ -631,7 +646,6 @@ void GameServer::PlayerItemEquip(SocketInfo* socketInfo, stringstream& recvStrea
 		LeaveCriticalSection(&critsecPlayerInfo);
 	}
 
-	sendStream << slotNumber << "\n";
 	sendStream << isPlayerHasItem << "\n";
 	Send(socketInfo, sendStream);
 }
@@ -772,6 +786,10 @@ void GameServer::PlayerDropEquippedItem(SocketInfo* socketInfo, stringstream& re
 	bool isPlayerHasEquippedItem = playerMap[socketInfo->number]->IsPlayerHasItemInEquipment(itemID);
 	if (isPlayerHasEquippedItem)
 	{
+		if (itemID == playerMap[socketInfo->number]->GetArmedWeaponID())
+		{
+			playerMap[socketInfo->number]->DisarmWeapon();
+		}
 		playerMap[socketInfo->number]->RemoveItemInEquipment(itemID);
 
 		EnterCriticalSection(&critsecPlayerInfo);
@@ -861,4 +879,61 @@ void GameServer::DestroyItem(const int playerNumber, shared_ptr<Item> item, cons
 {
 	// 아이템 파괴
 	playerMap[playerNumber]->RemoveItemInInventory(item, itemID);
+}
+
+void GameServer::PlayerChangedWeapon(SocketInfo* socketInfo, std::stringstream& recvStream)
+{
+	string changedWeaponID;
+	recvStream >> changedWeaponID;
+
+	bool isPlayerHasEquippedItem = playerMap[socketInfo->number]->IsPlayerHasItemInEquipment(changedWeaponID);
+	if (isPlayerHasEquippedItem)
+	{
+		playerMap[socketInfo->number]->ArmWeapon(changedWeaponID);
+
+		stringstream sendStream;
+
+		sendStream << static_cast<int>(EPacketType::CHANGE_WEAPON) << "\n";
+		sendStream << socketInfo->number << "\n";
+		sendStream << changedWeaponID << "\n";
+
+		EnterCriticalSection(&critsecPlayerInfo);
+		Broadcast(sendStream, socketInfo->number);
+		LeaveCriticalSection(&critsecPlayerInfo);
+	}
+}
+
+void GameServer::PlayerArmWeapon(SocketInfo* socketInfo, std::stringstream& recvStream)
+{
+	string itemID;
+	recvStream >> itemID;
+
+	bool isPlayerHasEquippedItem = playerMap[socketInfo->number]->IsPlayerHasItemInEquipment(itemID);
+	if (isPlayerHasEquippedItem)
+	{
+		playerMap[socketInfo->number]->ArmWeapon(itemID);
+
+		stringstream sendStream;
+
+		sendStream << static_cast<int>(EPacketType::ARM_WEAPON) << "\n";
+		sendStream << socketInfo->number << "\n";
+		sendStream << itemID << "\n";
+
+		EnterCriticalSection(&critsecPlayerInfo);
+		Broadcast(sendStream, socketInfo->number);
+		LeaveCriticalSection(&critsecPlayerInfo);
+	}
+}
+
+void GameServer::PlayerDisarmWeapon(SocketInfo* socketInfo, std::stringstream& recvStream)
+{
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::DISARM_WEAPON) << "\n";
+	sendStream << socketInfo->number << "\n";
+
+	playerMap[socketInfo->number]->DisarmWeapon();
+
+	EnterCriticalSection(&critsecPlayerInfo);
+	Broadcast(sendStream, socketInfo->number);
+	LeaveCriticalSection(&critsecPlayerInfo);
 }

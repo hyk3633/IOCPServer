@@ -9,6 +9,7 @@
 #include "../Structs/PossessedItem.h"
 #include "../Structs/EquippedItem.h"
 #include "../Structs/PlayerStatus.h"
+#include "../Structs/PlayerInfo.h"
 #include "../Item/Item.h"
 
 typedef void(*WrestlingCallback)(int);
@@ -19,7 +20,9 @@ class Player : public Character, public std::enable_shared_from_this<Player>
 {
 public:
 
-	Player(const int num);
+	Player() = default;
+
+	Player(const int num, const PlayerInfo& playerInfo);
 
 	virtual ~Player() override;
 
@@ -95,6 +98,14 @@ public:
 
 	PlayerStatus GetPlayerStatus() const;
 
+	void SerializePlayerInitialInfo(stringstream& sendStream);
+
+	void ArmWeapon(const string& weaponID);
+
+	void DisarmWeapon();
+
+	inline string GetArmedWeaponID() const { return armedWeaponID; }
+
 protected:
 
 	void AddItemToIDNumberMap(const string& itemID);
@@ -135,9 +146,9 @@ private:
 
 	// 스탯
 
-	float health = 50;
+	float health;
 
-	float maxHealth = 100;
+	float maxHealth;
 
 	bool isDead = 0;
 
@@ -153,11 +164,12 @@ private:
 
 	unordered_map<string, int> itemIDNumberMap;
 
+	string armedWeaponID;
+
 	int lastIDNumber = 0;
 
-	// 하드코딩 하지말고 입력받기
-	int columns = 6;
+	int columns;
 
-	int rows = 15;
+	int rows;
 
 };

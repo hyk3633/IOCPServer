@@ -3,11 +3,13 @@
 using namespace std;
 using namespace rapidjson;
 
-static string file("D:\\UE5Projects\\IOCPServer\\Json\\ItemInfo.json");
+static string itemInfoFile("D:\\UE5Projects\\IOCPServer\\Json\\ItemInfo.json");
+
+static string playerInfoFile("D:\\UE5Projects\\IOCPServer\\Json\\PlayerInfo.json");
 
 void JsonComponent::Initialize()
 {
-    ifstream ifs(file);
+    ifstream ifs(itemInfoFile);
     if (!ifs.is_open()) {
         cout << "[Error] : No json file.\n";
         return;
@@ -17,6 +19,25 @@ void JsonComponent::Initialize()
 
     doc = Document(kObjectType);
     doc.Parse(json.c_str());
+}
+
+void JsonComponent::GetPlayerInfo(PlayerInfo& playerInfo)
+{
+    ifstream ifs(playerInfoFile);
+    if (!ifs.is_open()) {
+        cout << "[Error] : No json file.\n";
+        return;
+    }
+
+    string json((istreambuf_iterator<char>(ifs)), (istreambuf_iterator<char>()));
+
+    rapidjson::Document playerInfoDoc = Document(kObjectType);
+    playerInfoDoc.Parse(json.c_str());
+
+    Value& playerInfoValue = playerInfoDoc.GetObject();
+    playerInfo.health   = playerInfoValue["Health"].GetInt();
+    playerInfo.row      = playerInfoValue["Row"].GetInt();
+    playerInfo.column   = playerInfoValue["Column"].GetInt();
 }
 
 void JsonComponent::GetItemCommonInfo(const int itemKey, ItemInfo& itemInfo)

@@ -7,6 +7,8 @@ class Character
 {
 public:
 
+	Character() = default;
+
 	Character(const int num);
 
 	virtual ~Character();

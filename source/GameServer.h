@@ -4,6 +4,7 @@
 #include <memory>
 #include "Structs/PossessedItem.h"
 #include "Structs/EquippedItem.h"
+#include "Structs/PlayerInfo.h"
 
 class ZombieManager;
 class ItemManager;
@@ -93,6 +94,12 @@ protected:
 
 	static void DestroyItem(const int playerNumber, shared_ptr<Item> item, const string& itemID);
 
+	static void PlayerChangedWeapon(SocketInfo*, std::stringstream&);
+
+	static void PlayerArmWeapon(SocketInfo*, std::stringstream&);
+
+	static void PlayerDisarmWeapon(SocketInfo*, std::stringstream&);
+
 private:
 
 	static CRITICAL_SECTION	critsecPlayerInfo;
@@ -120,5 +127,7 @@ private:
 	float zombieThreadElapsedTime;
 
 	float zombiePacketSendingInterval = 0.1f;
+
+	static PlayerInfo playerInfo;
 
 };

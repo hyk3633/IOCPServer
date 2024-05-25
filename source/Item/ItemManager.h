@@ -5,6 +5,7 @@
 #include "../Structs/Vector3D.h"
 #include "../Structs/PossessedItem.h"
 #include "../Structs/EquippedItem.h"
+#include "../Structs/PlayerInfo.h"
 #include "../Enums/ItemFunctions.h"
 #include <memory>
 #include <unordered_map>
@@ -25,6 +26,8 @@ public:
 
 	ItemManager(ItemDestroyCallback idc);
 	~ItemManager() = default;
+
+	void GetPlayerInfo(PlayerInfo& info);
 
 	shared_ptr<Item> GetItem(const string& itemID);
 	

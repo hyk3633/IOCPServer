@@ -29,6 +29,11 @@ ItemManager::ItemManager(ItemDestroyCallback idc)
 	itemFunction[EItemMainType::RecoveryItem] = &ItemManager::Healing;
 }
 
+void ItemManager::GetPlayerInfo(PlayerInfo& info)
+{
+	jsonComponent->GetPlayerInfo(info);
+}
+
 shared_ptr<Item> ItemManager::GetItem(const string& itemID)
 {
 	if (itemMap.find(itemID) != itemMap.end())

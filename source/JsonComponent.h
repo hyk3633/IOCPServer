@@ -5,6 +5,7 @@
 #include "../rapidjson/prettywriter.h"
 #include "Structs/ItemInfo.h"
 #include "Structs/GridPoint.h"
+#include "Structs/PlayerInfo.h"
 #include "Enums/WeaponType.h"
 #include "Enums/ItemType.h"
 #include <memory>
@@ -21,6 +22,8 @@ public:
 	~JsonComponent() = default;
 
 	void Initialize();
+
+	void GetPlayerInfo(PlayerInfo& playerInfo);
 
 	void GetItemCommonInfo(const int itemKey, ItemInfo& itemInfo);
 
