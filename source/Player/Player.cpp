@@ -4,7 +4,7 @@ using namespace std;
 
 #define EMPTY -1
 
-Player::Player(const int num, const PlayerInfo& playerInfo) : maxHealth(playerInfo.health), health(playerInfo.health), rows(playerInfo.row), columns(playerInfo.column)
+Player::Player(const int num, const PlayerInfo& playerInfo) :Character(num), maxHealth(playerInfo.health), health(playerInfo.health), rows(playerInfo.row), columns(playerInfo.column)
 {
 	inventoryGrids = vector<vector<int>>(rows, vector<int>(columns, EMPTY));
 }

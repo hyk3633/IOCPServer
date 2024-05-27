@@ -106,6 +106,8 @@ public:
 
 	inline string GetArmedWeaponID() const { return armedWeaponID; }
 
+	inline float GetHealth() const { return health; }
+
 protected:
 
 	void AddItemToIDNumberMap(const string& itemID);

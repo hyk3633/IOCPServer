@@ -292,7 +292,7 @@ void GameServer::NewPlayerAccessToGameMap(SocketInfo* socketInfo, stringstream& 
 	player->SerializePlayerInitialInfo(initialInfoStream);
 
 	// 좀비 데이터 직렬화
-	//SaveZombieInfoToPacket(initialInfoStream);	
+	SaveZombieInfoToPacket(initialInfoStream);	
 
 	// 필드에 있는 아이템 데이터 직렬화
 	SaveItemInfoToPacket(initialInfoStream);
@@ -668,7 +668,6 @@ void GameServer::PlayerUnequipItem(SocketInfo* socketInfo, stringstream& recvStr
 		GridPoint pointToAdd{ xPoint ,yPoint };
 		const bool result = playerMap[socketInfo->number]->TryAddItemAt(item, itemID, pointToAdd);
 
-		//itemManager->SetItemStateToDeactivated(itemID);
 		if (result)
 		{
 			EnterCriticalSection(&critsecPlayerInfo);
@@ -732,30 +731,47 @@ void GameServer::Broadcast(stringstream& sendStream, const int skipNumber)
 
 void GameServer::ProcessPlayerAttackResult(SocketInfo* socketInfo, stringstream& recvStream)
 {
-	int size = 0, characterNumber = -1;
-	bool isPlayer = false;
-	recvStream >> size;
+	int size = 0;
+	float attackPower = 0.f;
+	recvStream >> size >> attackPower;
+
+	stringstream healthChangedStream, hitInfoStream;
+
+	hitInfoStream << static_cast<int>(EPacketType::ATTACKRESULT) << "\n";
+	hitInfoStream << size << "\n";
+
+	healthChangedStream << static_cast<int>(EPacketType::HEALTH_CHANGED) << "\n";
+	healthChangedStream << size << "\n";
+
+	HitInfo hitInfo;
 	for (int i = 0; i < size; i++)
 	{
-		recvStream >> characterNumber >> isPlayer;
-		if (isPlayer)
-		{
-			cout << "클라이언트 " << socketInfo->number << "가 클라이언트 " << characterNumber << "를 때렸습니다.\n";
-			playerMap[characterNumber]->TakeDamage(100);
+		recvStream >> hitInfo;
 
-			// 변화된 정보 전송
+		hitInfoStream << hitInfo;
+
+		healthChangedStream << hitInfo.characterNumber << "\n";
+		healthChangedStream << hitInfo.isPlayer << "\n";
+
+		if (hitInfo.isPlayer)
+		{
+			cout << "클라이언트 " << socketInfo->number << "가 클라이언트 " << hitInfo.characterNumber << "를 때렸습니다.\n";
+			playerMap[hitInfo.characterNumber]->TakeDamage(attackPower);
+
+			healthChangedStream << playerMap[socketInfo->number]->GetHealth() << "\n";
 		}
 		else
 		{
-			cout << "플레이어 " << socketInfo->number << "가 좀비 " << characterNumber << "를 때렸습니다." << "\n";
-			zombieMap[characterNumber]->TakeDamage(100);
-
-			// 변화된 정보 전송
+			cout << "플레이어 " << socketInfo->number << "가 좀비 " << hitInfo.characterNumber << "를 때렸습니다." << "\n";
+			zombieMap[hitInfo.characterNumber]->TakeDamage(attackPower);
+			
+			healthChangedStream << zombieMap[hitInfo.characterNumber]->GetHealth() << "\n";
 		}
 	}
 
 	EnterCriticalSection(&critsecPlayerInfo);
-	//Broadcast(sendStream);
+	Broadcast(healthChangedStream);
+	Broadcast(hitInfoStream);
 	LeaveCriticalSection(&critsecPlayerInfo);
 }
 
@@ -867,10 +883,11 @@ void GameServer::PlayerUseItem(SocketInfo* socketInfo, std::stringstream& recvSt
 	Broadcast(itemUsingStream, socketInfo->number);
 
 	stringstream playerStatusStream;
-	auto status = playerMap[socketInfo->number]->GetPlayerStatus();
-	playerStatusStream << static_cast<int>(EPacketType::PLAYERSTATUS) << "\n";
-	playerStatusStream << socketInfo->number << "\n";
-	playerStatusStream << status;
+	playerStatusStream << static_cast<int>(EPacketType::HEALTH_CHANGED) << "\n";
+	playerStatusStream << 1 << "\n";											// 캐릭터 수
+	playerStatusStream << socketInfo->number << "\n";							// 플레이어 번호
+	playerStatusStream << true << "\n";											// 플레이어 여부 (true면 플레이어, false면 좀비)
+	playerStatusStream << playerMap[socketInfo->number]->GetHealth() << "\n";	// 체력
 
 	Broadcast(playerStatusStream);
 }

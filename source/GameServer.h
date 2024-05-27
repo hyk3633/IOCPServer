@@ -5,6 +5,7 @@
 #include "Structs/PossessedItem.h"
 #include "Structs/EquippedItem.h"
 #include "Structs/PlayerInfo.h"
+#include "Structs/HitInfo.h"
 
 class ZombieManager;
 class ItemManager;

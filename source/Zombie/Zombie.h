@@ -97,6 +97,8 @@ public:
 
 	virtual void TakeDamage(const float damage) override;
 
+	inline float GetHealth() const { return health; }
+
 protected:
 
 	void SaveInfoToPacket(std::ostream& stream, const int bitType);
@@ -135,8 +137,8 @@ private:
 
 	// Ω∫≈»
 
-	float health = 100;
+	float health = 200;
 
-	float maxHealth = 100;
+	float maxHealth = 200;
 
 };
