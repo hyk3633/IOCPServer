@@ -41,6 +41,8 @@ protected:
 		 
 	void SaveItemConcreteInfo(rapidjson::Value& valueObj, AmmoItemInfo& itemInfo);
 
+	void SaveItemConcreteInfo(rapidjson::Value& valueObj, ArmourItemInfo& itemInfo);
+
 private:
 
 	rapidjson::Document doc;

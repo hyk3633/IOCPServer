@@ -6,6 +6,7 @@ enum class EItemMainType
 	RangedWeapon,
 	RecoveryItem,
 	AmmoItem,
+	ArmourItem,
 	MAX,
 };
 

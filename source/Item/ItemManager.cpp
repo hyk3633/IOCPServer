@@ -14,7 +14,7 @@ ItemManager::ItemManager(ItemDestroyCallback idc)
 	stringstream concreteInfoStream;
 	ItemInfo itemInfo;
 
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 8; i++)
 	{
 		const string itemID = MakeItemUUID();
 		jsonComponent->GetItemCommonInfo(i, itemInfo);
@@ -76,6 +76,7 @@ void ItemManager::SaveItemInfoToPacket(std::ostream& stream)
 	stream << itemMap.size() << "\n";
 	for (auto& kv : itemMap)
 	{
+
 		stream << kv.first << "\n";
 		stream << kv.second;
 	}

@@ -292,7 +292,7 @@ void GameServer::NewPlayerAccessToGameMap(SocketInfo* socketInfo, stringstream& 
 	player->SerializePlayerInitialInfo(initialInfoStream);
 
 	// 좀비 데이터 직렬화
-	SaveZombieInfoToPacket(initialInfoStream);	
+	//SaveZombieInfoToPacket(initialInfoStream);	
 
 	// 필드에 있는 아이템 데이터 직렬화
 	SaveItemInfoToPacket(initialInfoStream);
@@ -706,6 +706,7 @@ void GameServer::PlayerItemDrop(SocketInfo* socketInfo, stringstream& recvStream
 
 	if (isPlayerHasItem)
 	{
+
 		auto item = itemManager->GetItem(itemID);
 		playerMap[socketInfo->number]->RemoveItemInInventory(item, itemID);
 		sendStream << item->itemInfo.itemKey << "\n";

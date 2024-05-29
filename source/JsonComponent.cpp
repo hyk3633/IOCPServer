@@ -7,6 +7,8 @@ static string itemInfoFile("D:\\UE5Projects\\IOCPServer\\Json\\ItemInfo.json");
 
 static string playerInfoFile("D:\\UE5Projects\\IOCPServer\\Json\\PlayerInfo.json");
 
+static string concreteInfoName("ConcreteInfo");
+
 void JsonComponent::Initialize()
 {
     ifstream ifs(itemInfoFile);
@@ -79,6 +81,13 @@ void JsonComponent::GetItemConcreteInfo(const int itemKey, EItemMainType itemTyp
             stream << info;
             break;
         }
+        case EItemMainType::ArmourItem:
+        {
+            ArmourItemInfo info;
+            SaveItemConcreteInfo(item, info);
+            stream << info;
+            break;
+        }
     }
 }
 
@@ -88,33 +97,39 @@ void JsonComponent::SaveItemCommonInfoToStruct(rapidjson::Value& valueObj, ItemI
     itemInfo.itemName      = valueObj["ItemName"].GetString();
     itemInfo.itemType      = static_cast<EItemMainType>(valueObj["ItemType"].GetInt());
     itemInfo.itemGridSize  = GridPoint{ valueObj["ItemGridSize"]["X"].GetInt(), valueObj["ItemGridSize"]["Y"].GetInt() };
-    itemInfo.quantity      = valueObj["Count"].GetInt();
+    itemInfo.quantity      = valueObj["Quantity"].GetInt();
     itemInfo.isConsumable  = valueObj["IsConsumable"].GetInt();
 }
 
 void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, WeaponInfo& itemInfo)
 {
-    itemInfo.attackPower    = valueObj["WeaponType"].GetDouble();
-    itemInfo.weaponType     = static_cast<EWeaponType>(valueObj["WeaponType"].GetInt());
+    itemInfo.attackPower    = valueObj[concreteInfoName.c_str()]["AttackPower"].GetDouble();
+    itemInfo.weaponType     = static_cast<EWeaponType>(valueObj[concreteInfoName.c_str()]["WeaponType"].GetInt());
 }
 
 void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, RangedWeaponInfo& itemInfo)
 {
-    itemInfo.attackPower    = valueObj["WeaponType"].GetDouble();
-    itemInfo.weaponType     = static_cast<EWeaponType>(valueObj["WeaponType"].GetInt());
-    itemInfo.fireRate       = valueObj["RangedWeapon"]["FireRate"].GetDouble();
-    itemInfo.recoil         = valueObj["RangedWeapon"]["Recoil"].GetDouble();
-    itemInfo.magazine       = valueObj["RangedWeapon"]["Magazine"].GetInt();
-    itemInfo.reloadingSpeed = valueObj["RangedWeapon"]["ReloadingSpeed"].GetDouble();
+    itemInfo.attackPower    = valueObj[concreteInfoName.c_str()]["AttackPower"].GetDouble();
+    itemInfo.weaponType     = static_cast<EWeaponType>(valueObj[concreteInfoName.c_str()]["WeaponType"].GetInt());
+    itemInfo.fireRate       = valueObj[concreteInfoName.c_str()]["FireRate"].GetDouble();
+    itemInfo.recoil         = valueObj[concreteInfoName.c_str()]["Recoil"].GetDouble();
+    itemInfo.magazine       = valueObj[concreteInfoName.c_str()]["Magazine"].GetInt();
+    itemInfo.reloadingSpeed = valueObj[concreteInfoName.c_str()]["ReloadingSpeed"].GetDouble();
 }
 
 void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, RecoveryItemInfo& itemInfo)
 {
-    itemInfo.recoveryAmount =  valueObj["RecoveryItem"]["RecoveryAmount"].GetInt();
-    itemInfo.usingSpeed =      valueObj["RecoveryItem"]["UsingSpeed"].GetDouble();
+    itemInfo.recoveryAmount =  valueObj[concreteInfoName.c_str()]["RecoveryAmount"].GetInt();
+    itemInfo.usingSpeed =      valueObj[concreteInfoName.c_str()]["UsingSpeed"].GetDouble();
 }
 
 void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, AmmoItemInfo& itemInfo)
 {
-    itemInfo.ammoType =    valueObj["AmmoItem"]["AmmoType"].GetInt();
+    itemInfo.ammoType =    valueObj[concreteInfoName.c_str()]["AmmoType"].GetInt();
+}
+
+void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, ArmourItemInfo& itemInfo)
+{
+    itemInfo.defensePower =     valueObj[concreteInfoName.c_str()]["DefensePower"].GetDouble();
+    itemInfo.armourSlot =       valueObj[concreteInfoName.c_str()]["ArmourSlot"].GetInt();
 }

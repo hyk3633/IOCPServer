@@ -134,3 +134,27 @@ struct AmmoItemInfo
 	}
 
 };
+
+struct ArmourItemInfo
+{
+	ArmourItemInfo() {}
+
+	float defensePower;
+
+	int armourSlot;
+
+	friend ostream& operator<<(ostream& stream, ArmourItemInfo& info)
+	{
+		stream << info.defensePower << "\n";
+		stream << info.armourSlot << "\n";
+		return stream;
+	}
+
+	friend istream& operator>>(istream& stream, ArmourItemInfo& info)
+	{
+		stream >> info.defensePower;
+		stream >> info.armourSlot;
+		return stream;
+	}
+
+};
