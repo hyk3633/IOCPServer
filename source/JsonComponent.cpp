@@ -111,10 +111,8 @@ void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, RangedWeapo
 {
     itemInfo.attackPower    = valueObj[concreteInfoName.c_str()]["AttackPower"].GetDouble();
     itemInfo.weaponType     = static_cast<EWeaponType>(valueObj[concreteInfoName.c_str()]["WeaponType"].GetInt());
-    itemInfo.fireRate       = valueObj[concreteInfoName.c_str()]["FireRate"].GetDouble();
-    itemInfo.recoil         = valueObj[concreteInfoName.c_str()]["Recoil"].GetDouble();
     itemInfo.magazine       = valueObj[concreteInfoName.c_str()]["Magazine"].GetInt();
-    itemInfo.reloadingSpeed = valueObj[concreteInfoName.c_str()]["ReloadingSpeed"].GetDouble();
+    itemInfo.ammoType = valueObj[concreteInfoName.c_str()]["AmmoType"].GetInt();
 }
 
 void JsonComponent::SaveItemConcreteInfo(rapidjson::Value& valueObj, RecoveryItemInfo& itemInfo)

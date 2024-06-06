@@ -83,6 +83,8 @@ protected:
 
 	static void ProcessPlayerAttackResult(SocketInfo*, std::stringstream&);
 
+	static void ProcessKickedCharacters(SocketInfo*, std::stringstream&);
+
 	static void ProcessPlayerDead(const int playerNumber);
 
 	static void ProcessZombieDead(const int zombieNumber);

@@ -61,19 +61,15 @@ struct RangedWeaponInfo : public WeaponInfo
 {
 	RangedWeaponInfo() {}
 
-	float fireRate;
-	float recoil;
 	int magazine;
-	float reloadingSpeed;
+	int ammoType;
 
 	friend ostream& operator<<(ostream& stream, RangedWeaponInfo& info)
 	{
 		stream << info.attackPower << "\n";
 		stream << static_cast<int>(info.weaponType) << "\n";
-		stream << info.fireRate << "\n";
-		stream << info.recoil << "\n";
+		stream << info.ammoType << "\n";
 		stream << info.magazine << "\n";
-		stream << info.reloadingSpeed << "\n";
 		return stream;
 	}
 
@@ -83,10 +79,8 @@ struct RangedWeaponInfo : public WeaponInfo
 		int type = 0;
 		stream >> type;
 		info.weaponType = static_cast<EWeaponType>(type);
-		stream >> info.fireRate;
-		stream >> info.recoil;
 		stream >> info.magazine;
-		stream >> info.reloadingSpeed;
+		stream >> info.ammoType;
 		return stream;
 	}
 

@@ -99,6 +99,8 @@ public:
 
 	inline float GetHealth() const { return health; }
 
+	inline float GetAttackPower() const { return attackPower; }
+
 protected:
 
 	void SaveInfoToPacket(std::ostream& stream, const int bitType);
@@ -140,5 +142,7 @@ private:
 	float health = 200;
 
 	float maxHealth = 200;
+
+	float attackPower = 30;
 
 };

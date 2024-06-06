@@ -63,6 +63,7 @@ bool GameServer::InitializeServer()
 	packetCallbacks[EPacketType::DROP_EQUIPPED_ITEM]	= PlayerDropEquippedItem;
 	packetCallbacks[EPacketType::UNEQUIP_ITEM]			= PlayerUnequipItem;
 	packetCallbacks[EPacketType::ATTACKRESULT]			= ProcessPlayerAttackResult;
+	packetCallbacks[EPacketType::KICKEDCHARACTERS]		= ProcessKickedCharacters;
 	packetCallbacks[EPacketType::PLAYERRESPAWN]			= RespawnPlayer;
 	packetCallbacks[EPacketType::ZOMBIEHITSME]			= ProcessZombieHitResult;
 	packetCallbacks[EPacketType::PROJECTILE]			= ReplicateProjectile;
@@ -337,7 +338,7 @@ void GameServer::SerializeOthersToNewPlayer(const int playerNumber, std::strings
 	int count = 0;
 	for (auto& p : playerMap)
 	{
-		if (p.first == playerNumber) 
+		if (p.first == playerNumber)
 			continue;
 
 		otherPlayersStream << p.first << "\n";					// 플레이어 번호
@@ -529,12 +530,30 @@ void GameServer::ProcessZombieHitResult(SocketInfo* socketInfo, std::stringstrea
 
 	int zombieNumber = -1;
 	bool bResult = false;
-	recvStream >> zombieNumber >> bResult;
+	HitInfo hitInfo;
+	recvStream >> zombieNumber >> bResult >> hitInfo;
+	
+	zombieMap[zombieNumber]->ChangeState();
 
-	if (zombieMap.find(zombieNumber) != zombieMap.end())
+	if (bResult && zombieMap.find(zombieNumber) != zombieMap.end())
 	{
-		zombieMap[zombieNumber]->ChangeState();
+		stringstream healthChangedStream, hitInfoStream;
+
+		hitInfoStream << static_cast<int>(EPacketType::ATTACKRESULT) << "\n";
+		hitInfoStream << 1 << "\n";
+		hitInfoStream << hitInfo;
+
+		healthChangedStream << static_cast<int>(EPacketType::HEALTH_CHANGED) << "\n";
+		healthChangedStream << 1 << "\n";
+		healthChangedStream << hitInfo.characterNumber << "\n";
+		healthChangedStream << hitInfo.isPlayer << "\n";
+
 		cout << "좀비 " << zombieNumber << "가 플레이어 " << socketInfo->number << " 를 때렸습니다.\n";
+		playerMap[hitInfo.characterNumber]->TakeDamage(zombieMap[zombieNumber]->GetAttackPower());
+		healthChangedStream << playerMap[socketInfo->number]->GetHealth() << "\n";
+
+		Broadcast(healthChangedStream);
+		Broadcast(hitInfoStream, socketInfo->number);
 	}
 	LeaveCriticalSection(&critsecPlayerInfo);
 }
@@ -773,6 +792,28 @@ void GameServer::ProcessPlayerAttackResult(SocketInfo* socketInfo, stringstream&
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(healthChangedStream);
 	Broadcast(hitInfoStream);
+	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::ProcessKickedCharacters(SocketInfo* socketInfo, stringstream& recvStream)
+{
+	int size = 0;
+	recvStream >> size;
+
+	stringstream hitInfoStream;
+
+	hitInfoStream << static_cast<int>(EPacketType::KICKEDCHARACTERS) << "\n";
+	hitInfoStream << size << "\n";
+
+	HitInfo hitInfo;
+	for (int i = 0; i < size; i++)
+	{
+		recvStream >> hitInfo;
+		hitInfoStream << hitInfo;
+	}
+
+	EnterCriticalSection(&critsecPlayerInfo);
+	Broadcast(hitInfoStream, socketInfo->number);
 	LeaveCriticalSection(&critsecPlayerInfo);
 }
 
