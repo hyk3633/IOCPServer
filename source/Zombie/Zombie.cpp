@@ -150,7 +150,7 @@ bool Zombie::IsTargetValid()
 		return false;
 }
 
-void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest)
+void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest, const float speed)
 {
 	Vector3D location = GetLocation();
 	const float maxStep = speed * interval;
@@ -269,7 +269,6 @@ void Zombie::TakeDamage(const float damage)
 	health = max(health - damage, 0.f);
 	if (health == 0.f)
 	{
-		// critical section
 		Deactivate();
 		zombieDeadCb(GetNumber());
 	}
@@ -321,4 +320,21 @@ void Zombie::InitializeInfo()
 	inRangePlayerMap.clear();
 	health = maxHealth;
 	sendInfoBitMask = 0;
+}
+
+void Zombie::ClearStateStatus()
+{
+	pathManager->ClearPathStatus();
+	inRangePlayerMap.clear();
+	elapsedWaitingTime = 0.f;
+	if (auto targetSharedPtr = targetWeakPtr.lock())
+	{
+		playerWrestlingCanceledCb(targetWeakPtr);
+		targetWeakPtr.reset();
+	}
+}
+
+void Zombie::RegisterPlayerWrestlingCancledCallback(PlayerWrestlingCanceledCallback pwcc)
+{
+	playerWrestlingCanceledCb = pwcc;
 }

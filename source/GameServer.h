@@ -6,6 +6,7 @@
 #include "Structs/EquippedItem.h"
 #include "Structs/PlayerInfo.h"
 #include "Structs/HitInfo.h"
+#include "Structs/Pos.h"
 
 class ZombieManager;
 class ItemManager;
@@ -102,6 +103,10 @@ protected:
 	static void PlayerArmWeapon(SocketInfo*, std::stringstream&);
 
 	static void PlayerDisarmWeapon(SocketInfo*, std::stringstream&);
+
+	static void PlayerWrestlingCanceled(std::weak_ptr<Player> playerPtr);
+
+	static void ActivateWeaponAbility(SocketInfo*, std::stringstream&);
 
 private:
 

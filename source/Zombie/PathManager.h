@@ -24,13 +24,13 @@ protected:
 
 	bool WhetherRecalculPath();
 
-	void ClearPathStatus();
-
 public:
 
 	inline void SetZombie(std::shared_ptr<Zombie> newZombie) { zombie = newZombie; }
 
 	inline std::vector<Pos>& GetPathToTarget() { return pathToTarget; }
+
+	void ClearPathStatus();
 
 private:
 
@@ -45,5 +45,7 @@ private:
 	Vector3D nextPoint;
 
 	Vector3D nextDirection;
+
+	float walkSpeed = 100.f;
 
 };

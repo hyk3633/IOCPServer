@@ -24,7 +24,14 @@ void PathManager::ProcessMovement()
 		if (zombie->GetTargetLocation(targetLocation))
 		{
 			Pathfinder::GetPathfinder()->FindPath(zombie->GetLocation(), targetLocation, pathToTarget, pathIndexArr);
-			InitializePathStatus();
+			if (pathToTarget.size() <= 1)
+			{
+				zombie->ChangeState();
+			}
+			else
+			{
+				InitializePathStatus();
+			}
 		}
 		else
 		{
@@ -63,7 +70,7 @@ void PathManager::FollowPath()
 			zombie->SetNextGrid(nextPoint);
 		}
 	}
-	zombie->AddMovement(nextDirection, nextPoint);
+	zombie->AddMovement(nextDirection, nextPoint, walkSpeed);
 }
 
 bool PathManager::WhetherRecalculPath()
@@ -90,5 +97,16 @@ bool PathManager::WhetherRecalculPath()
 
 void PathManager::ClearPathStatus()
 {
-
+	Pathfinder::GetPathfinder()->ClearPathCost(pathIndexArr);
+	if (pathIdx + 1 < pathToTarget.size())
+	{
+		Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx + 1], true);
+		Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx], true);
+	}
+	else if (pathIdx < pathToTarget.size())
+	{
+		Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx], true);
+	}
+	pathToTarget.clear();
+	pathIndexArr.clear();
 }

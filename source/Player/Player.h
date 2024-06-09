@@ -36,6 +36,8 @@ public:
 
 	inline void PlayerInGameMap() { isInGameMap = true; }
 
+	inline float GetKickPower() const { return kickPower; }
+
 	void WrestleStateOn();
 
 	void WrestlStateOff();
@@ -153,6 +155,8 @@ private:
 	float maxHealth;
 
 	bool isDead = 0;
+
+	float kickPower = 0;
 
 	// 인벤토리
 

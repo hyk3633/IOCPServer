@@ -65,7 +65,7 @@ protected:
 
 	void InitializePathFinder();
 
-	bool CanGo(const int y, const int x);
+	bool CanGo(const Pos& pos);
 
 	int VectorToCoordinatesY(const float vectorY);
 	int VectorToCoordinatesX(const float vectorX);

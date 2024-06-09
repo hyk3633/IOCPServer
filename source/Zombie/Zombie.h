@@ -23,6 +23,8 @@ typedef EZombieInfoBitType ZIBT;
 
 typedef void(*ZombieDeadCallback)(int);
 
+typedef void(*PlayerWrestlingCanceledCallback)(std::weak_ptr<Player>);
+
 class Zombie : public Character, public std::enable_shared_from_this<Zombie>
 {
 public:
@@ -59,7 +61,7 @@ public:
 
 	bool IsTargetValid();
 
-	void AddMovement(const Vector3D& direction, const Vector3D& dest);
+	void AddMovement(const Vector3D& direction, const Vector3D& dest, const float speed);
 
 	/* getter, setter */
 
@@ -108,6 +110,12 @@ protected:
 	void MaskToInfoBit(const ZIBT bitType);
 
 	void InitializeInfo();
+	
+public:
+
+	void ClearStateStatus();
+
+	void RegisterPlayerWrestlingCancledCallback(PlayerWrestlingCanceledCallback pwcc);
 
 private:
 
@@ -144,5 +152,7 @@ private:
 	float maxHealth = 200;
 
 	float attackPower = 30;
+
+	PlayerWrestlingCanceledCallback playerWrestlingCanceledCb;
 
 };

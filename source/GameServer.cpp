@@ -6,6 +6,8 @@
 #include "Zombie/ZombieManager.h"
 #include "Zombie/Zombie.h"
 #include "Zombie/State/IdleState.h"
+#include "Zombie/State/WaitState.h"
+#include "Pathfinder/PathFinder.h"
 #include <sstream>
 #include <chrono>
 #include <iostream>
@@ -48,29 +50,30 @@ bool GameServer::InitializeServer()
 
 	itemManager->GetPlayerInfo(playerInfo);
 
-	packetCallbacks[EPacketType::SIGNUP]				= SignUp;
-	packetCallbacks[EPacketType::LOGIN]					= Login;
-	packetCallbacks[EPacketType::SPAWNPLAYER]			= NewPlayerAccessToGameMap;
-	packetCallbacks[EPacketType::SYNCHPLAYER]			= SynchronizePlayerInfo;
-	packetCallbacks[EPacketType::PLAYERINPUTACTION]		= BroadcastPlayerInputAction;
-	packetCallbacks[EPacketType::ZOMBIEINRANGE]			= ProcessInRangeZombie;
-	packetCallbacks[EPacketType::ZOMBIEOUTRANGE]		= ProcessOutRangeZombie;
-	packetCallbacks[EPacketType::WRESTLINGRESULT]		= ProcessPlayerWrestlingResult;
-	packetCallbacks[EPacketType::PICKUP_ITEM]			= PlayerItemPickUp;
-	packetCallbacks[EPacketType::ITEMGRIDPOINTUPDATE]	= PlayerItemGridPointUpdate;
-	packetCallbacks[EPacketType::EQUIP_ITEM]			= PlayerItemEquip;
-	packetCallbacks[EPacketType::DROP_ITEM]				= PlayerItemDrop;
-	packetCallbacks[EPacketType::DROP_EQUIPPED_ITEM]	= PlayerDropEquippedItem;
-	packetCallbacks[EPacketType::UNEQUIP_ITEM]			= PlayerUnequipItem;
-	packetCallbacks[EPacketType::ATTACKRESULT]			= ProcessPlayerAttackResult;
-	packetCallbacks[EPacketType::KICKEDCHARACTERS]		= ProcessKickedCharacters;
-	packetCallbacks[EPacketType::PLAYERRESPAWN]			= RespawnPlayer;
-	packetCallbacks[EPacketType::ZOMBIEHITSME]			= ProcessZombieHitResult;
-	packetCallbacks[EPacketType::PROJECTILE]			= ReplicateProjectile;
-	packetCallbacks[EPacketType::USINGITEM]				= PlayerUseItem;
-	packetCallbacks[EPacketType::CHANGE_WEAPON]			= PlayerChangedWeapon;
-	packetCallbacks[EPacketType::ARM_WEAPON]			= PlayerArmWeapon;
-	packetCallbacks[EPacketType::DISARM_WEAPON]			= PlayerDisarmWeapon;
+	packetCallbacks[EPacketType::SIGNUP]							= SignUp;
+	packetCallbacks[EPacketType::LOGIN]								= Login;
+	packetCallbacks[EPacketType::SPAWNPLAYER]						= NewPlayerAccessToGameMap;
+	packetCallbacks[EPacketType::SYNCHPLAYER]						= SynchronizePlayerInfo;
+	packetCallbacks[EPacketType::PLAYERINPUTACTION]					= BroadcastPlayerInputAction;
+	packetCallbacks[EPacketType::ZOMBIEINRANGE]						= ProcessInRangeZombie;
+	packetCallbacks[EPacketType::ZOMBIEOUTRANGE]					= ProcessOutRangeZombie;
+	packetCallbacks[EPacketType::WRESTLINGRESULT]					= ProcessPlayerWrestlingResult;
+	packetCallbacks[EPacketType::PICKUP_ITEM]						= PlayerItemPickUp;
+	packetCallbacks[EPacketType::ITEMGRIDPOINTUPDATE]				= PlayerItemGridPointUpdate;
+	packetCallbacks[EPacketType::EQUIP_ITEM]						= PlayerItemEquip;
+	packetCallbacks[EPacketType::DROP_ITEM]							= PlayerItemDrop;
+	packetCallbacks[EPacketType::DROP_EQUIPPED_ITEM]				= PlayerDropEquippedItem;
+	packetCallbacks[EPacketType::UNEQUIP_ITEM]						= PlayerUnequipItem;
+	packetCallbacks[EPacketType::ATTACKRESULT]						= ProcessPlayerAttackResult;
+	packetCallbacks[EPacketType::KICKEDCHARACTERS]					= ProcessKickedCharacters;
+	packetCallbacks[EPacketType::PLAYERRESPAWN]						= RespawnPlayer;
+	packetCallbacks[EPacketType::ZOMBIEHITSME]						= ProcessZombieHitResult;
+	packetCallbacks[EPacketType::PROJECTILE]						= ReplicateProjectile;
+	packetCallbacks[EPacketType::USINGITEM]							= PlayerUseItem;
+	packetCallbacks[EPacketType::CHANGE_WEAPON]						= PlayerChangedWeapon;
+	packetCallbacks[EPacketType::ARM_WEAPON]						= PlayerArmWeapon;
+	packetCallbacks[EPacketType::DISARM_WEAPON]						= PlayerDisarmWeapon;
+	packetCallbacks[EPacketType::ACTIVATE_WEAPON_ABILITY]			= ActivateWeaponAbility;
 
 	InitializeCriticalSection(&critsecPlayerInfo);
 
@@ -158,6 +161,7 @@ void GameServer::InitializeZombieInfo()
 
 	shared_ptr<Zombie> zombie = zombieManager->GetZombie(location, rotation);
 	zombie->RegisterZombieDeadCallback(ProcessZombieDead);
+	zombie->RegisterPlayerWrestlingCancledCallback(PlayerWrestlingCanceled);
 	zombieMap[zombie->GetNumber()] = zombie;
 
 	location.X = 1100;
@@ -166,6 +170,7 @@ void GameServer::InitializeZombieInfo()
 
 	shared_ptr<Zombie> zombie2 = zombieManager->GetZombie(location, rotation);
 	zombie2->RegisterZombieDeadCallback(ProcessZombieDead);
+	zombie2->RegisterPlayerWrestlingCancledCallback(PlayerWrestlingCanceled);
 	zombieMap[zombie2->GetNumber()] = zombie2;
 }
 
@@ -293,7 +298,7 @@ void GameServer::NewPlayerAccessToGameMap(SocketInfo* socketInfo, stringstream& 
 	player->SerializePlayerInitialInfo(initialInfoStream);
 
 	// 좀비 데이터 직렬화
-	//SaveZombieInfoToPacket(initialInfoStream);	
+	SaveZombieInfoToPacket(initialInfoStream);	
 
 	// 필드에 있는 아이템 데이터 직렬화
 	SaveItemInfoToPacket(initialInfoStream);
@@ -752,8 +757,8 @@ void GameServer::Broadcast(stringstream& sendStream, const int skipNumber)
 void GameServer::ProcessPlayerAttackResult(SocketInfo* socketInfo, stringstream& recvStream)
 {
 	int size = 0;
-	float attackPower = 0.f;
-	recvStream >> size >> attackPower;
+	string itemID;
+	recvStream >> size >> itemID;
 
 	stringstream healthChangedStream, hitInfoStream;
 
@@ -776,15 +781,17 @@ void GameServer::ProcessPlayerAttackResult(SocketInfo* socketInfo, stringstream&
 		if (hitInfo.isPlayer)
 		{
 			cout << "클라이언트 " << socketInfo->number << "가 클라이언트 " << hitInfo.characterNumber << "를 때렸습니다.\n";
-			playerMap[hitInfo.characterNumber]->TakeDamage(attackPower);
+			// itemID로 아이템 찾아서 플레이어로 공격력 넘겨주고 소스 플레이어에서 데미지 계산 후 타겟 플레이어로 take damage
+			//playerMap[socketInfo->number]->getda
+			//playerMap[hitInfo.characterNumber]->TakeDamage();
 
 			healthChangedStream << playerMap[socketInfo->number]->GetHealth() << "\n";
 		}
 		else
 		{
 			cout << "플레이어 " << socketInfo->number << "가 좀비 " << hitInfo.characterNumber << "를 때렸습니다." << "\n";
-			zombieMap[hitInfo.characterNumber]->TakeDamage(attackPower);
-			
+			//zombieMap[hitInfo.characterNumber]->TakeDamage();
+
 			healthChangedStream << zombieMap[hitInfo.characterNumber]->GetHealth() << "\n";
 		}
 	}
@@ -797,23 +804,46 @@ void GameServer::ProcessPlayerAttackResult(SocketInfo* socketInfo, stringstream&
 
 void GameServer::ProcessKickedCharacters(SocketInfo* socketInfo, stringstream& recvStream)
 {
-	int size = 0;
+	int size = 0, sendSize = 0;
 	recvStream >> size;
 
-	stringstream hitInfoStream;
+	stringstream sendStream, kickedInfoStream;
 
-	hitInfoStream << static_cast<int>(EPacketType::KICKEDCHARACTERS) << "\n";
-	hitInfoStream << size << "\n";
+	sendStream << static_cast<int>(EPacketType::KICKEDCHARACTERS) << "\n";
 
-	HitInfo hitInfo;
+	int number = 0;
+	bool isPlayer = false;
+
+	EnterCriticalSection(&critsecZombieInfo);
 	for (int i = 0; i < size; i++)
 	{
-		recvStream >> hitInfo;
-		hitInfoStream << hitInfo;
+		recvStream >> number >> isPlayer;
+		kickedInfoStream << number << "\n" << isPlayer << "\n";
+		if (isPlayer)
+		{
+			if (playerMap.find(number) != playerMap.end())
+			{
+				++sendSize;
+			}
+		}
+		else
+		{
+			if (zombieMap.find(number) != zombieMap.end())
+			{
+				++sendSize;
+				zombieMap[number]->ClearStateStatus();
+				zombieMap[number]->SetZombieState(WaitState::GetInstance());
+			}
+		}
 	}
+	LeaveCriticalSection(&critsecZombieInfo);
+
+	sendStream << socketInfo->number << "\n";
+	sendStream << sendSize << "\n";
+	sendStream << kickedInfoStream.str() << "\n";
 
 	EnterCriticalSection(&critsecPlayerInfo);
-	Broadcast(hitInfoStream, socketInfo->number);
+	Broadcast(sendStream);
 	LeaveCriticalSection(&critsecPlayerInfo);
 }
 
@@ -902,7 +932,11 @@ void GameServer::ReplicateProjectile(SocketInfo* socketInfo, std::stringstream& 
 {
 	stringstream sendStream;
 	sendStream << static_cast<int>(EPacketType::PROJECTILE) << "\n";
-	sendStream << recvStream.str() << "\n";
+	Vector3D location;
+	Rotator rotation;
+	recvStream >> location.X >> location.Y >> location.Z;
+	recvStream >> rotation.pitch >> rotation.yaw >> rotation.roll;
+	sendStream << location << rotation;
 
 	Broadcast(sendStream, socketInfo->number);
 }
@@ -984,6 +1018,19 @@ void GameServer::PlayerArmWeapon(SocketInfo* socketInfo, std::stringstream& recv
 	}
 }
 
+void GameServer::PlayerWrestlingCanceled(std::weak_ptr<Player> playerPtr)
+{
+	EnterCriticalSection(&critsecPlayerInfo);
+	if (auto playerSharedPtr = playerPtr.lock())
+	{
+		stringstream sendStream;
+		sendStream << static_cast<int>(EPacketType::PLAYER_WRESTLING_CANCELED) << "\n";
+		sendStream << playerSharedPtr->GetNumber() << "\n";
+		Broadcast(sendStream);
+	}
+	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
 void GameServer::PlayerDisarmWeapon(SocketInfo* socketInfo, std::stringstream& recvStream)
 {
 	stringstream sendStream;
@@ -991,6 +1038,21 @@ void GameServer::PlayerDisarmWeapon(SocketInfo* socketInfo, std::stringstream& r
 	sendStream << socketInfo->number << "\n";
 
 	playerMap[socketInfo->number]->DisarmWeapon();
+
+	EnterCriticalSection(&critsecPlayerInfo);
+	Broadcast(sendStream, socketInfo->number);
+	LeaveCriticalSection(&critsecPlayerInfo);
+}
+
+void GameServer::ActivateWeaponAbility(SocketInfo* socketInfo, std::stringstream& recvStream)
+{
+	int inputType = 0;
+	recvStream >> inputType;
+
+	stringstream sendStream;
+	sendStream << static_cast<int>(EPacketType::ACTIVATE_WEAPON_ABILITY) << "\n";
+	sendStream << socketInfo->number << "\n";
+	sendStream << inputType << "\n";
 
 	EnterCriticalSection(&critsecPlayerInfo);
 	Broadcast(sendStream, socketInfo->number);

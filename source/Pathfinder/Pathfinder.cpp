@@ -33,9 +33,8 @@ void Pathfinder::FindPath(const Vector3D& start, const Vector3D& dest, vector<Po
 	path.clear();
 	pathIndexArr.clear();
 
-	const int dy = VectorToCoordinatesY(dest.Y);
-	const int dx = VectorToCoordinatesX(dest.X);
-	if (CanGo(dy, dx) == false)
+	Pos destPos = { VectorToCoordinatesY(dest.Y), VectorToCoordinatesX(dest.X) };
+	if (CanGo(destPos) == false)
 	{
 		// log
 		return;
@@ -44,7 +43,7 @@ void Pathfinder::FindPath(const Vector3D& start, const Vector3D& dest, vector<Po
 	const int sx = VectorToCoordinatesX(start.X);
 
 	// 목적지가 현재 위치 보다 높은 곳 인지? (높은 곳이면 true)
-	const bool isGoingUp = grids[dy][dx].height - grids[sy][sx].height > 0 ? true : false;
+	const bool isGoingUp = grids[destPos.y][destPos.x].height - grids[sy][sx].height > 0 ? true : false;
 
 	Pos startPos = Pos(sy, sx);
 	vector<vector<bool>> visited(lengthSize, vector<bool>(widthSize, false));
@@ -52,10 +51,9 @@ void Pathfinder::FindPath(const Vector3D& start, const Vector3D& dest, vector<Po
 	map<Pos, Pos> parent;
 	priority_queue<aStarNode> pq;
 
-	Pos destPos(dy, dx);
 	{
 		int g = 0;
-		int h = (abs(dy - sy) + abs(dx - sx)) * 10;
+		int h = (abs(destPos.y - sy) + abs(destPos.x - sx)) * 10;
 		pq.push({ -(g + h), g, startPos });
 		best[sy][sx] = g + h;
 		parent[startPos] = startPos;
@@ -84,12 +82,12 @@ void Pathfinder::FindPath(const Vector3D& start, const Vector3D& dest, vector<Po
 		{
 			Pos nextPos = node.pos + front[dir];
 
-			if (CanGo(nextPos.y, nextPos.x) == false || visited[nextPos.y][nextPos.x])
+			if (CanGo(nextPos) == false || visited[nextPos.y][nextPos.x])
 				continue;
 
 			const int heightCost = floor(grids[node.pos.y][node.pos.x].height - grids[nextPos.y][nextPos.x].height + 0.5f) * (isGoingUp ? costWeight : -costWeight);
 			const int g = node.g + cost[dir] + grids[nextPos.y][nextPos.x].extraCost + grids[nextPos.y][nextPos.x].pathCost + heightCost;
-			const int h = (abs(dy - nextPos.y) + abs(dx - nextPos.x)) * 10;
+			const int h = (abs(destPos.y - nextPos.y) + abs(destPos.x - nextPos.x)) * 10;
 			if (best[nextPos.y][nextPos.x] <= g + h)
 				continue;
 
@@ -128,7 +126,7 @@ void Pathfinder::SetGridPassability(const Pos& pos, const bool isPassable)
 	for (int Idx = 0; Idx < 8; Idx++)
 	{
 		newPos = currentPos + front[Idx];
-		if (CanGo(newPos.y, newPos.x))
+		if (CanGo(newPos))
 		{
 			grids[y][x].pathCost = max(grids[newPos.y][newPos.x].pathCost + (isPassable ? -HW : HW), 0);
 		}
@@ -143,11 +141,11 @@ void Pathfinder::ClearPathCost(const vector<Pos>& pathIndexArr)
 	}
 }
 
-bool Pathfinder::CanGo(const int y, const int x)
+bool Pathfinder::CanGo(const Pos& pos)
 {
-	if (y >= 0 && y < lengthSize && x >= 0 && x < widthSize)
+	if (pos.y >= 0 && pos.y < lengthSize && pos.x >= 0 && pos.x < widthSize)
 	{
-		if (grids[y][x].isPassable)
+		if (grids[pos.y][pos.x].isPassable)
 			return true;
 	}
 	return false;
