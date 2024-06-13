@@ -27,7 +27,6 @@ struct Item
 
 	friend std::ostream& operator<<(std::ostream& stream, shared_ptr<Item> item)
 	{ 
-		//stream << static_cast<int>(item->state) << "\n";
 		stream << item->itemInfo.itemKey << "\n";
 		stream << item->location;
 		return stream;

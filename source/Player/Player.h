@@ -16,6 +16,8 @@ typedef void(*WrestlingCallback)(int);
 
 typedef void(*PlayerDeadCallback)(int);
 
+typedef void(*PlayerHealthChangedCallback)(int, float, bool);
+
 class Player : public Character, public std::enable_shared_from_this<Player>
 {
 public:
@@ -36,8 +38,6 @@ public:
 
 	inline void PlayerInGameMap() { isInGameMap = true; }
 
-	inline float GetKickPower() const { return kickPower; }
-
 	void WrestleStateOn();
 
 	void WrestlStateOff();
@@ -51,6 +51,8 @@ public:
 	void RegisterWrestlingCallback(WrestlingCallback wc);
 
 	void RegisterPlayerDeadCallback(PlayerDeadCallback pdc);
+
+	void RegisterPlayerHealthChangedCallback(PlayerHealthChangedCallback phc);
 
 	virtual void SerializeData(std::ostream& stream) override;
 
@@ -136,7 +138,7 @@ private:
 
 	EWrestleState wrestleState = EWrestleState::ABLE;
 
-	float wrestleWaitTime = 10.f;
+	float wrestleWaitTime = 30.f;
 
 	float wrestleWaitElapsedTime = 0.f;
 
@@ -144,7 +146,7 @@ private:
 
 	WrestlingCallback playerDeadCb = nullptr;
 
-	double currentRatencyStart;
+	PlayerHealthChangedCallback playerHealthChangedCb = nullptr;
 
 	int zombieNumberWrestleWith;
 
@@ -156,7 +158,7 @@ private:
 
 	bool isDead = 0;
 
-	float kickPower = 0;
+	float stamina;
 
 	// 인벤토리
 

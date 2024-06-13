@@ -11,8 +11,14 @@ using std::shared_ptr;
 
 void WaitState::ChangeState(shared_ptr<Zombie> zombie)
 {
+	if (zombie->FindNearestPlayer())
+	{
+		zombie->SetZombieState(ChaseState::GetInstance());
+		return;
+	}
+
 	shared_ptr<Player> targetPlayer = zombie->GetTargetPlayer();
-	if (zombie && targetPlayer)
+	if (targetPlayer)
 	{
 		const float distance = zombie->GetLocation().GetDistance(targetPlayer->GetLocation());
 		if (distance <= 100.f)
@@ -21,13 +27,9 @@ void WaitState::ChangeState(shared_ptr<Zombie> zombie)
 			{
 				zombie->SetZombieState(GrabState::GetInstance());
 			}
-			else if (targetPlayer->GetWrestleState() == EWrestleState::WAITING)
-			{
-				zombie->SetZombieState(AttackState::GetInstance());
-			}
 			else
 			{
-				zombie->SetZombieState(WaitState::GetInstance());
+				zombie->SetZombieState(AttackState::GetInstance());
 			}
 		}
 		else if (distance > 100.f && distance <= 1200.f)

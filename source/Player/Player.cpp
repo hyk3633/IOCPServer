@@ -8,9 +8,9 @@ Player::Player(const int num, const PlayerInfo& playerInfo) :
 	Character(num), 
 	maxHealth(playerInfo.health), 
 	health(playerInfo.health), 
+	stamina(playerInfo.stamina),
 	rows(playerInfo.row), 
-	columns(playerInfo.column), 
-	kickPower(playerInfo.kickPower)
+	columns(playerInfo.column)
 {
 	inventoryGrids = vector<vector<int>>(rows, vector<int>(columns, EMPTY));
 }
@@ -58,12 +58,16 @@ void Player::RegisterPlayerDeadCallback(PlayerDeadCallback pdc)
 	playerDeadCb = pdc;
 }
 
+void Player::RegisterPlayerHealthChangedCallback(PlayerHealthChangedCallback phc)
+{
+	playerHealthChangedCb = phc;
+}
+
 void Player::SerializeData(ostream& stream)
 {
 	SerializeLocation(stream);
 	SerializeRotation(stream);
 	stream << velocity;
-	stream << currentRatencyStart << "\n";
 }
 
 void Player::DeserializeData(istream& stream)
@@ -71,14 +75,13 @@ void Player::DeserializeData(istream& stream)
 	DeserializeLocation(stream);
 	DeserializeRotation(stream);
 	stream >> velocity;
-	stream >> currentRatencyStart;
 }
 
 void Player::Waiting()
 {
 	if (wrestleState == EWrestleState::WAITING)
 	{
-		wrestleWaitElapsedTime += 0.2f;
+		wrestleWaitElapsedTime += 0.016f;
 		if (wrestleWaitElapsedTime >= wrestleWaitTime)
 		{
 			wrestleWaitElapsedTime = 0.f;
@@ -90,6 +93,7 @@ void Player::Waiting()
 void Player::TakeDamage(const float damage)
 {
 	health = max(health - damage, 0.f);
+	playerHealthChangedCb(GetNumber(), health, true);
 	if (health == 0.f)
 	{
 		// critical section
@@ -101,6 +105,7 @@ void Player::TakeDamage(const float damage)
 void Player::Heal(const float healingAmount)
 {
 	health = min(health + healingAmount, maxHealth);
+	playerHealthChangedCb(GetNumber(), health, true);
 }
 
 void Player::SetZombieNumberWrestleWith(const int number)
@@ -280,6 +285,7 @@ PlayerStatus Player::GetPlayerStatus() const
 void Player::SerializePlayerInitialInfo(stringstream& sendStream)
 {
 	sendStream << maxHealth << "\n";
+	sendStream << stamina << "\n";
 	sendStream << rows << "\n";
 	sendStream << columns << "\n";
 }

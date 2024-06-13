@@ -15,6 +15,10 @@ void BiteState::Update(shared_ptr<Zombie> zombie)
 	{
 		zombie->ChangeState();
 	}
+	else
+	{
+		zombie->BitingAttackToTarget();
+	}
 }
 
 EZombieState BiteState::GetStateEnum()

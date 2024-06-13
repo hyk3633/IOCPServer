@@ -55,6 +55,18 @@ struct WeaponInfo
 		return stream;
 	}
 
+	static WeaponInfo GetConcreteInfo(const stringstream& concreteInfo)
+	{
+		stringstream tempInfo;
+		tempInfo << concreteInfo.str();
+
+		WeaponInfo info;
+		int type = 0;
+		tempInfo >> info.attackPower >> type;
+		info.weaponType = static_cast<EWeaponType>(type);
+		return info;
+	}
+
 };
 
 struct RangedWeaponInfo : public WeaponInfo
@@ -82,6 +94,20 @@ struct RangedWeaponInfo : public WeaponInfo
 		stream >> info.magazine;
 		stream >> info.ammoType;
 		return stream;
+	}
+
+	static RangedWeaponInfo GetConcreteInfo(const stringstream& concreteInfo)
+	{
+		stringstream tempInfo;
+		tempInfo << concreteInfo.str();
+
+		RangedWeaponInfo info;
+		int type = 0;
+		tempInfo >> info.attackPower >> type;
+		info.weaponType = static_cast<EWeaponType>(type);
+		tempInfo >> info.magazine;
+		tempInfo >> info.ammoType;
+		return info;
 	}
 
 };

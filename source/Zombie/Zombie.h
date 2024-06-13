@@ -23,7 +23,7 @@ typedef EZombieInfoBitType ZIBT;
 
 typedef void(*ZombieDeadCallback)(int);
 
-typedef void(*PlayerWrestlingCanceledCallback)(std::weak_ptr<Player>);
+typedef void(*ZombieHealthChangedCallback)(int, float, bool);
 
 class Zombie : public Character, public std::enable_shared_from_this<Zombie>
 {
@@ -47,11 +47,13 @@ public:
 
 	void RegisterZombieDeadCallback(ZombieDeadCallback zdc);
 
+	void RegisterZombieHealthChangedCallback(ZombieHealthChangedCallback zhc);
+
 	/* 스테이트 객체에서 호출 하는 함수 */
 
 	void SetZombieState(ZombieState* newState);
 
-	bool CheckNearestPlayer();
+	bool FindNearestPlayer();
 
 	void ProcessMovement();
 
@@ -103,6 +105,8 @@ public:
 
 	inline float GetAttackPower() const { return attackPower; }
 
+	void BitingAttackToTarget();
+
 protected:
 
 	void SaveInfoToPacket(std::ostream& stream, const int bitType);
@@ -114,8 +118,6 @@ protected:
 public:
 
 	void ClearStateStatus();
-
-	void RegisterPlayerWrestlingCancledCallback(PlayerWrestlingCanceledCallback pwcc);
 
 private:
 
@@ -145,6 +147,8 @@ private:
 
 	bool isActive = false;
 
+	int damageCount = 0;
+
 	// 스탯
 
 	float health = 200;
@@ -153,6 +157,6 @@ private:
 
 	float attackPower = 30;
 
-	PlayerWrestlingCanceledCallback playerWrestlingCanceledCb;
+	ZombieHealthChangedCallback zombieHealthChangedCb;
 
 };

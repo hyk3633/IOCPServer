@@ -11,7 +11,7 @@ void IdleState::ChangeState(shared_ptr<Zombie> zombie)
 
 void IdleState::Update(shared_ptr<Zombie> zombie)
 {
-	if (zombie->CheckNearestPlayer())
+	if (zombie->FindNearestPlayer())
 	{
 		zombie->ChangeState();
 	}

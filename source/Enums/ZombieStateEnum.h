@@ -9,5 +9,4 @@ enum class EZombieState
 	BITE,
 	BLOCKED,
 	WAIT,
-	KICKED
 };

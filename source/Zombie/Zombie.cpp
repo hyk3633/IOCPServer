@@ -51,6 +51,10 @@ void Zombie::Update()
 void Zombie::AddPlayerToInRangeMap(shared_ptr<Player> player)
 {
 	inRangePlayerMap[player->GetNumber()] = player;
+	if (FindNearestPlayer())
+	{
+		ChangeState();
+	}
 }
 
 void Zombie::RemoveInRangePlayer(const int playerNumber)
@@ -77,6 +81,11 @@ void Zombie::RegisterZombieDeadCallback(ZombieDeadCallback zdc)
 	zombieDeadCb = zdc;
 }
 
+void Zombie::RegisterZombieHealthChangedCallback(ZombieHealthChangedCallback zhc)
+{
+	zombieHealthChangedCb = zhc;
+}
+
 void Zombie::SetZombieState(ZombieState* newState)
 {
 	zombieState = newState;
@@ -89,10 +98,12 @@ void Zombie::SetZombieState(ZombieState* newState)
 	}
 }
 
-bool Zombie::CheckNearestPlayer()
+bool Zombie::FindNearestPlayer()
 {
 	if (inRangePlayerMap.empty())
 		return false;
+
+	vector<int> targetsToRemove;
 
 	float minDist = 10000.f;
 	int nearestNumber = -1;
@@ -110,6 +121,10 @@ bool Zombie::CheckNearestPlayer()
 					minDist = dist;
 					nearestNumber = kv.first;
 				}
+				if (dist > 1200.f)
+				{
+					targetsToRemove.push_back(kv.first);
+				}
 			}
 		}
 		else
@@ -117,6 +132,12 @@ bool Zombie::CheckNearestPlayer()
 			inRangePlayerMap.erase(kv.first);
 		}
 	}
+
+	for (const int number : targetsToRemove)
+	{
+		RemoveInRangePlayer(number);
+	}
+
 	if (nearestNumber == -1)
 	{
 		return false;
@@ -131,9 +152,7 @@ bool Zombie::CheckNearestPlayer()
 				return true;
 			}
 		}
-		inRangePlayerMap.erase(nearestNumber);
-		CheckNearestPlayer();
-		return false;
+		return FindNearestPlayer();
 	}
 }
 
@@ -202,6 +221,7 @@ bool Zombie::Waiting()
 	if (elapsedWaitingTime >= waitingTime)
 	{
 		elapsedWaitingTime = 0.f;
+		damageCount = 0;
 		return true;
 	}
 	return false;
@@ -267,10 +287,23 @@ void Zombie::SerializeData(ostream& stream)
 void Zombie::TakeDamage(const float damage)
 {
 	health = max(health - damage, 0.f);
+	zombieHealthChangedCb(GetNumber(), health, false);
 	if (health == 0.f)
 	{
 		Deactivate();
 		zombieDeadCb(GetNumber());
+	}
+}
+
+void Zombie::BitingAttackToTarget()
+{
+	if (auto targetSharedPtr = targetWeakPtr.lock())
+	{
+		if (elapsedWaitingTime > damageCount * 0.5f)
+		{
+			++damageCount;
+			targetSharedPtr->TakeDamage(attackPower / 5);
+		}
 	}
 }
 
@@ -325,16 +358,5 @@ void Zombie::InitializeInfo()
 void Zombie::ClearStateStatus()
 {
 	pathManager->ClearPathStatus();
-	inRangePlayerMap.clear();
 	elapsedWaitingTime = 0.f;
-	if (auto targetSharedPtr = targetWeakPtr.lock())
-	{
-		playerWrestlingCanceledCb(targetWeakPtr);
-		targetWeakPtr.reset();
-	}
-}
-
-void Zombie::RegisterPlayerWrestlingCancledCallback(PlayerWrestlingCanceledCallback pwcc)
-{
-	playerWrestlingCanceledCb = pwcc;
 }

@@ -31,6 +31,10 @@ public:
 
 	shared_ptr<Item> GetItem(const string& itemID);
 	
+	float GetWeaponAttackPower(const string& itemID);
+
+
+
 	void RemoveItem(const string& itemID);
 
 	void SetItemStateToActivated(const string& itemID);

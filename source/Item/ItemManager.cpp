@@ -42,6 +42,21 @@ shared_ptr<Item> ItemManager::GetItem(const string& itemID)
 		return nullptr;
 }
 
+float ItemManager::GetWeaponAttackPower(const string& itemID)
+{
+	auto item = GetItem(itemID);
+	const EItemMainType itemType = item->itemInfo.itemType;
+	if (itemType == EItemMainType::MeleeWeapon)
+	{
+		return WeaponInfo::GetConcreteInfo(item->concreteInfoStream).attackPower;
+	}
+	else if (itemType == EItemMainType::RangedWeapon)
+	{
+		return RangedWeaponInfo::GetConcreteInfo(item->concreteInfoStream).attackPower;
+	}
+	return 0.f;
+}
+
 void ItemManager::RemoveItem(const string& itemID)
 {
 	itemMap.erase(itemID);

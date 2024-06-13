@@ -56,8 +56,6 @@ protected:
 
 	static void SynchronizePlayerInfo(SocketInfo*, std::stringstream&);
 
-	static void BroadcastPlayerInputAction(SocketInfo*, std::stringstream&);
-
 	static void ProcessInRangeZombie(SocketInfo*, std::stringstream&);
 
 	static void ProcessOutRangeZombie(SocketInfo*, std::stringstream&);
@@ -85,6 +83,8 @@ protected:
 	static void ProcessPlayerAttackResult(SocketInfo*, std::stringstream&);
 
 	static void ProcessKickedCharacters(SocketInfo*, std::stringstream&);
+
+	static void CharacterHealthChanged(const int number, const float health, const bool isPlayer);
 
 	static void ProcessPlayerDead(const int playerNumber);
 

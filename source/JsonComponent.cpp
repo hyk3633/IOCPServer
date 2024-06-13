@@ -38,9 +38,9 @@ void JsonComponent::GetPlayerInfo(PlayerInfo& playerInfo)
 
     Value& playerInfoValue = playerInfoDoc.GetObject();
     playerInfo.health   = playerInfoValue["Health"].GetInt();
+    playerInfo.stamina   = playerInfoValue["Stamina"].GetInt();
     playerInfo.row      = playerInfoValue["Row"].GetInt();
     playerInfo.column   = playerInfoValue["Column"].GetInt();
-    playerInfo.kickPower   = playerInfoValue["KickPower"].GetDouble();
 }
 
 void JsonComponent::GetItemCommonInfo(const int itemKey, ItemInfo& itemInfo)

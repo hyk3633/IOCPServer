@@ -3,12 +3,12 @@
 struct PlayerInfo
 {
 	int health;
+	int stamina;
 	int row;
 	int column;
-	float kickPower;
 
 	PlayerInfo() {}
-	PlayerInfo(int h, int r, int c, float k) : health(h), row(r), column(c), kickPower(k) {}
+	PlayerInfo(int h, int r, int c, int s) : health(h), row(r), column(c), stamina(s) {}
 	PlayerInfo& operator=(const PlayerInfo& info)
 	{
 		*this = info;
