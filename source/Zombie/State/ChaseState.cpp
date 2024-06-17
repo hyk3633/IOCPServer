@@ -15,10 +15,24 @@ void ChaseState::ChangeState(shared_ptr<Zombie> zombie)
 	{
 		zombie->SetZombieState(IdleState::GetInstance());
 	}
+	else
+	{
+		auto targetPlayer = zombie->GetTargetPlayer();
+		if (targetPlayer->GetWrestleState() == EWrestleState::ABLE)
+		{
+			zombie->SetZombieState(GrabState::GetInstance());
+		}
+		else
+		{
+			zombie->SetZombieState(AttackState::GetInstance());
+		}
+	}
 }
 
 void ChaseState::Update(shared_ptr<Zombie> zombie)
 {
+	zombie->UpdatePathfindingTime();
+
 	auto targetPlayer = zombie->GetTargetPlayer();
 	if (targetPlayer)
 	{

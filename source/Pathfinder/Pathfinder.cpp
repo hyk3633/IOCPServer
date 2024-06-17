@@ -6,7 +6,7 @@
 
 using namespace std;
 
-Pathfinder::Pathfinder() : filePath("D:\\UE5Projects\\UntilDawn\\NavData\\TestData.txt")
+Pathfinder::Pathfinder() : filePath("D:\\UE5Projects\\UntilDawn\\NavData\\navData.txt")
 {
 	InitializePathFinder();
 }
@@ -36,7 +36,6 @@ void Pathfinder::FindPath(const Vector3D& start, const Vector3D& dest, vector<Po
 	Pos destPos = { VectorToCoordinatesY(dest.Y), VectorToCoordinatesX(dest.X) };
 	if (CanGo(destPos) == false)
 	{
-		// log
 		return;
 	}
 	const int sy = VectorToCoordinatesY(start.Y);

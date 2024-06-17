@@ -3,8 +3,10 @@
 #include "../Structs/Rotator.h"
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 class Zombie;
+class JsonComponent;
 
 class ZombieManager
 {
@@ -13,10 +15,16 @@ public:
 	ZombieManager();
 	~ZombieManager() = default;
 
-	std::shared_ptr<Zombie> GetZombie(const Vector3D& loc, const Rotator& rot);
+	void InitZombies(std::unordered_map<int, std::shared_ptr<Zombie>>& zombieMap);
+
+	std::shared_ptr<Zombie> GetNewZombie();
 
 private:
 
 	std::vector<std::shared_ptr<Zombie>> zombies;
+
+	unique_ptr<JsonComponent> jsonComponent;
+
+	std::vector<pair<Vector3D, Rotator>> placedZombies;
 
 };

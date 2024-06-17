@@ -14,12 +14,15 @@ ItemManager::ItemManager(ItemDestroyCallback idc)
 	stringstream concreteInfoStream;
 	ItemInfo itemInfo;
 
-	for (int i = 0; i < 8; i++)
+	vector<pair<Vector3D, int>> itemPlacedInfos;
+
+	jsonComponent->GetPlacedItemInfo(itemPlacedInfos);
+	for (int i = 0; i < itemPlacedInfos.size(); i++)
 	{
 		const string itemID = MakeItemUUID();
-		jsonComponent->GetItemCommonInfo(i, itemInfo);
-		jsonComponent->GetItemConcreteInfo(i, itemInfo.itemType, concreteInfoStream);
-		itemMap[itemID] = make_shared<Item>(EItemState::Activated, itemInfo, concreteInfoStream, Vector3D{ 310,-220 + (float)i * 50,40 });
+		jsonComponent->GetItemCommonInfo(itemPlacedInfos[i].second, itemInfo);
+		jsonComponent->GetItemConcreteInfo(itemPlacedInfos[i].second, itemInfo.itemType, concreteInfoStream);
+		itemMap[itemID] = make_shared<Item>(EItemState::Activated, itemInfo, concreteInfoStream, itemPlacedInfos[i].first);
 
 		activatedItemMap[itemID] = itemMap[itemID];
 
@@ -88,12 +91,14 @@ void ItemManager::SaveItemInfoToPacket(std::ostream& stream)
 {
 	lock_guard<mutex> lock(itemMutex);
 
-	stream << itemMap.size() << "\n";
-	for (auto& kv : itemMap)
+	stream << activatedItemMap.size() << "\n";
+	for (auto& kv : activatedItemMap)
 	{
-
-		stream << kv.first << "\n";
-		stream << kv.second;
+		if (auto shPtr = kv.second.lock())
+		{
+			stream << kv.first << "\n";
+			stream << shPtr;
+		}
 	}
 }
 
@@ -116,9 +121,6 @@ void ItemManager::MakePlayersPossessedItems(const vector<PossessedItem>& possess
 
 		concreteInfoStream.str() = "";
 	}
-
-	// deactivate ?
-	//activatedItemMap[itemID] = itemMap[itemID];
 }
 
 void ItemManager::MakePlayersEquippedItems(const vector<EquippedItem>& equippedItems)
@@ -135,9 +137,6 @@ void ItemManager::MakePlayersEquippedItems(const vector<EquippedItem>& equippedI
 
 		concreteInfoStream.str() = "";
 	}
-
-	// deactivate ?
-	//activatedItemMap[itemID] = itemMap[itemID];
 }
 
 void ItemManager::UseItem(shared_ptr<Player> player, const string& itemID, const int consumedAmount)
@@ -166,6 +165,10 @@ void ItemManager::UseItem(shared_ptr<Player> player, const string& itemID, const
 void ItemManager::DestroyItem(const int playerNumber, const string& itemID)
 {
 	itemDestroyCb(playerNumber, itemMap[itemID], itemID);
+	if (deactivatedItemMap.find(itemID) != deactivatedItemMap.end())
+	{
+		deactivatedItemMap.erase(itemID);
+	}
 	itemMap.erase(itemID);
 	cout << "[Log] 아이템 소진 : " << itemID << endl;
 }

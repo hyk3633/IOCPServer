@@ -20,12 +20,15 @@ void PathManager::ProcessMovement()
 	if (WhetherRecalculPath())
 	{
 		Pathfinder::GetPathfinder()->ClearPathCost(pathIndexArr);
+		zombie->StartPathfindingTimer();
+
 		Vector3D targetLocation;
 		if (zombie->GetTargetLocation(targetLocation))
 		{
 			Pathfinder::GetPathfinder()->FindPath(zombie->GetLocation(), targetLocation, pathToTarget, pathIndexArr);
 			if (pathToTarget.size() <= 1)
 			{
+				zombie->ClearPathfindingTimer();
 				zombie->ChangeState();
 			}
 			else
@@ -55,7 +58,7 @@ void PathManager::FollowPath()
 	const float dist = nextPoint.GetDistance(zombie->GetLocation());
 	if (dist <= GRID_DIST)
 	{
-		if (pathIdx > 0)
+		if (pathIdx > 0 && pathIdx < pathToTarget.size())
 		{
 			Pathfinder::GetPathfinder()->SetGridPassability(pathToTarget[pathIdx - 1], true);
 		}
@@ -75,6 +78,9 @@ void PathManager::FollowPath()
 
 bool PathManager::WhetherRecalculPath()
 {
+	if (zombie->GetAblePathfinding() == false)
+		return false;
+
 	if (pathToTarget.size() == 0 || pathIdx >= pathToTarget.size())
 	{
 		return true;

@@ -6,6 +6,8 @@
 #include "Structs/ItemInfo.h"
 #include "Structs/GridPoint.h"
 #include "Structs/PlayerInfo.h"
+#include "Structs/Vector3D.h"
+#include "Structs/Rotator.h"
 #include "Enums/WeaponType.h"
 #include "Enums/ItemType.h"
 #include <memory>
@@ -13,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 class JsonComponent
 {
@@ -28,6 +31,10 @@ public:
 	void GetItemCommonInfo(const int itemKey, ItemInfo& itemInfo);
 
 	void GetItemConcreteInfo(const int itemKey, EItemMainType itemType, std::stringstream& stream);
+
+	void GetPlacedZombieInfo(std::vector<pair<Vector3D, Rotator>>& infoArr);
+
+	void GetPlacedItemInfo(std::vector<pair<Vector3D, int>>& infoArr);
 
 protected:
 

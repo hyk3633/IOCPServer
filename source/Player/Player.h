@@ -30,23 +30,14 @@ public:
 
 	void InitializePlayerInfo();
 
-	inline string GetPlayerID() const { return playerID; }
+	virtual void SerializeData(std::ostream& stream) override;
 
-	void SetPlayerID(const string& id);
+	void DeserializeData(std::istream& stream);
 
-	inline bool IsPlayerInGameMap() const { return isInGameMap; }
+	void SerializePlayerInitialInfo(stringstream& sendStream);
 
-	inline void PlayerInGameMap() { isInGameMap = true; }
-
-	void WrestleStateOn();
-
-	void WrestlStateOff();
-
-	inline EWrestleState GetWrestleState() const { return wrestleState; }
-
-	inline bool GetSuccessToBlocking() const { return isSuccessToBlocking; }
-
-	void SetSuccessToBlocking(const bool isSuccess) { isSuccessToBlocking = isSuccess; }
+	// 레슬링 후 일정 시간 동안 레슬링 상태 방지
+	void Waiting();
 
 	void RegisterWrestlingCallback(WrestlingCallback wc);
 
@@ -54,37 +45,56 @@ public:
 
 	void RegisterPlayerHealthChangedCallback(PlayerHealthChangedCallback phc);
 
-	virtual void SerializeData(std::ostream& stream) override;
+	void SetPlayerID(const string& id);
 
-	void DeserializeData(std::istream& stream);
+	inline string GetPlayerID() const { return playerID; }
 
-	void Waiting();
+	// 플레이어가 게임 맵에 접속했는지
+	inline bool IsPlayerInGameMap() const { return isInGameMap; }
+
+	inline void PlayerInGameMap() { isInGameMap = true; }
+
+	void WrestleStateOn();
+
+	void WrestleStateOff();
+
+	inline EWrestleState GetWrestleState() const { return wrestleState; }
+
+	// 좀비 레슬링 방어 성공 여부 설정
+	void SetSuccessToBlocking(const bool isSuccess);
+
+	inline bool GetSuccessToBlocking() const { return isSuccessToBlocking; }
+
+	// 플레이어와 레슬링 중인 좀비 번호 반환
+	void SetZombieNumberWrestleWith(const int number);
+
+	inline int GetZombieNumberWrestleWith() const { return zombieNumberWrestleWith; }
 
 	virtual void TakeDamage(const float damage) override;
 
 	void Heal(const float healingAmount);
 
-	void SetZombieNumberWrestleWith(const int number);
-
-	inline int GetZombieNumberWrestleWith() const { return zombieNumberWrestleWith; }
+	inline float GetHealth() const { return health; }
 
 	inline bool GetIsDead() const { return isDead; }
 
-	bool UpdateItemGridPoint(shared_ptr<Item> item, const string& itemID, GridPoint& pointToAdd, const bool isRotated);
+	PlayerStatus GetPlayerStatus() const;
 
-	bool TryAddItem(shared_ptr<Item> item, const string& itemID);
+	/* 아이템 / 인벤토리 */
 
-	bool TryAddItemAt(shared_ptr<Item> item, const string& itemID, GridPoint& pointToAdd);
+	void ArmWeapon(const string& weaponID);
 
-	void AddItem(const GridPoint& topLeftPoint, const GridPoint& gridSize, const string& itemID);
+	void DisarmWeapon();
+
+	void RemoveItemInInventory(shared_ptr<Item> item, const string& itemID);
 
 	void RemoveItemGrid(const GridPoint& addedPoint, const GridPoint& gridSize);
 
-	bool IsPlayerHasItemInInventory(const string& itemID);
+protected:
 
-	bool IsPlayerHasItemInEquipment(const string& itemID);
+	void PrintInventoryStatus();
 
-	void RemoveItemInInventory(shared_ptr<Item> item, const string& itemID);
+public:
 
 	void RemoveItemInEquipment(const string& itemID);
 
@@ -92,37 +102,48 @@ public:
 
 	void ItemEquipInitialize(const string& itemID, const int slotNumber);
 
-	void PlayerUnEquipItem(shared_ptr<Item> item, const string& itemID);
+	void AddItemToIDNumberMap(const string& itemID);
 
-	GridPoint GetItemsAddedPoint(const string& itemID);
+	inline string GetArmedWeaponID() const { return armedWeaponID; }
+
+protected:
+
+	// 인벤토리의 아이템 위치 갱신
+	bool UpdateItemGridPoint(shared_ptr<Item> item, const string& itemID, GridPoint& pointToAdd, const bool isRotated);
+
+public:
+
+	void AddItem(const GridPoint& topLeftPoint, const GridPoint& gridSize, const string& itemID);
+
+protected:
+
+	// 인벤토리의 해당 위치에 아이템을 추가할 수 있는지 검사
+	bool IsRoomAvailable(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemIDNumber = -1);
+
+public:
+
+	bool TryAddItem(shared_ptr<Item> item, const string& itemID);
+
+protected:
+
+	// 인벤토리에 추가할 수 있는 크기 인지 검사
+	bool IsPitInInventory(const int xSize, const int ySize);
+
+public:
+
+	bool TryAddItemAt(shared_ptr<Item> item, const string& itemID, GridPoint& pointToAdd);
+
+	bool IsPlayerHasItemInInventory(const string& itemID);
+
+	bool IsPlayerHasItemInEquipment(const string& itemID);
 
 	unordered_map<string, GridPoint>& GetPossessedItems();
 
 	unordered_map<string, int>& GetEquippedItems();
 
-	PlayerStatus GetPlayerStatus() const;
+public:
 
-	void SerializePlayerInitialInfo(stringstream& sendStream);
-
-	void ArmWeapon(const string& weaponID);
-
-	void DisarmWeapon();
-
-	inline string GetArmedWeaponID() const { return armedWeaponID; }
-
-	inline float GetHealth() const { return health; }
-
-protected:
-
-	void AddItemToIDNumberMap(const string& itemID);
-
-	bool IsRoomAvailable(const GridPoint& topLeftPoint, const GridPoint& gridSize, const int itemIDNumber = -1);
-
-	bool IsPitInInventory(const int xSize, const int ySize);
-
-	bool IsGridValid(const int x, const int y);
-
-	void PrintInventoryStatus();
+	GridPoint GetItemsAddedPoint(const string& itemID);
 
 private:
 
@@ -138,7 +159,7 @@ private:
 
 	EWrestleState wrestleState = EWrestleState::ABLE;
 
-	float wrestleWaitTime = 30.f;
+	float wrestleWaitTime = 10.f;
 
 	float wrestleWaitElapsedTime = 0.f;
 
@@ -149,6 +170,8 @@ private:
 	PlayerHealthChangedCallback playerHealthChangedCb = nullptr;
 
 	int zombieNumberWrestleWith;
+
+	float pitch = 0.f;
 
 	// 스탯
 

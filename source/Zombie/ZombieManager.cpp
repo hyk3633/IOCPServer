@@ -1,28 +1,40 @@
 #include "ZombieManager.h"
 #include "Zombie.h"
+#include "../JsonComponent.h"
 
 using namespace std;
 
 ZombieManager::ZombieManager()
 {
+	jsonComponent = make_unique<JsonComponent>();
+
+	jsonComponent->GetPlacedZombieInfo(placedZombies);
+
 	zombies.reserve(50);
 
-	zombies.push_back(make_shared<Zombie>(0));
-	zombies.push_back(make_shared<Zombie>(1));
+	for (int i=0; i< placedZombies.size(); i++)
+	{
+		zombies.push_back(make_shared<Zombie>(i));
+		zombies[i]->SetLocation(placedZombies[i].first);
+		zombies[i]->SetRotation(placedZombies[i].second);
+	}
 }
 
-shared_ptr<Zombie> ZombieManager::GetZombie(const Vector3D& loc, const Rotator& rot)
+void ZombieManager::InitZombies(std::unordered_map<int, std::shared_ptr<Zombie>>& zombieMap)
 {
-	for (int i=0; i<zombies.size(); i++)
+	for (int i = 0; i < zombies.size(); i++)
 	{
-		if (!zombies[i]->GetIsActive())
-		{
-			zombies[i]->SetLocation(loc);
-			zombies[i]->SetRotation(rot);
-			zombies[i]->Activate();
-			return zombies[i];
-		}
+		zombieMap[i] = zombies[i];
 	}
-	return nullptr;
-	// create new zombie
+}
+
+std::shared_ptr<Zombie> ZombieManager::GetNewZombie()
+{
+	for (int i = 0; i < zombies.size(); i++)
+	{
+		zombies.push_back(make_shared<Zombie>(i));
+		zombies[i]->SetLocation(placedZombies[i].first);
+		zombies[i]->SetRotation(placedZombies[i].second);
+		return zombies[i];
+	}
 }

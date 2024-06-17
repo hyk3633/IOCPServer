@@ -22,6 +22,7 @@ protected:
 
 	void FollowPath();
 
+	// 경로를 다시 계산해야 하는지 검사
 	bool WhetherRecalculPath();
 
 public:

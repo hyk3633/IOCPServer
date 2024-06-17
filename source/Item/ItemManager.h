@@ -33,8 +33,6 @@ public:
 	
 	float GetWeaponAttackPower(const string& itemID);
 
-
-
 	void RemoveItem(const string& itemID);
 
 	void SetItemStateToActivated(const string& itemID);

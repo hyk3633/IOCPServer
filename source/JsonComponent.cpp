@@ -7,6 +7,10 @@ static string itemInfoFile("D:\\UE5Projects\\IOCPServer\\Json\\ItemInfo.json");
 
 static string playerInfoFile("D:\\UE5Projects\\IOCPServer\\Json\\PlayerInfo.json");
 
+static string placedZombieInfoFile("D:\\UE5Projects\\IOCPServer\\Json\\PlacedZombieObjectInfo.json");
+
+static string placedItemInfoFile("D:\\UE5Projects\\IOCPServer\\Json\\PlacedItemObjectInfo.json");
+
 static string concreteInfoName("ConcreteInfo");
 
 void JsonComponent::Initialize()
@@ -89,6 +93,55 @@ void JsonComponent::GetItemConcreteInfo(const int itemKey, EItemMainType itemTyp
             stream << info;
             break;
         }
+    }
+}
+
+void JsonComponent::GetPlacedZombieInfo(std::vector<pair<Vector3D, Rotator>>& infoArr)
+{
+    ifstream ifs(placedZombieInfoFile);
+    if (!ifs.is_open()) {
+        cout << "[Error] : No json file.\n";
+        return;
+    }
+
+    string json((istreambuf_iterator<char>(ifs)), (istreambuf_iterator<char>()));
+
+    rapidjson::Document placedZombieInfoDoc = Document(kObjectType);
+    placedZombieInfoDoc.Parse(json.c_str());
+
+    const Value& jsonValue = placedZombieInfoDoc["Zombies"];
+
+    for (int i=0; i<jsonValue.Size(); i++)
+    {
+        const Value& locationValue = jsonValue[i]["Location"].GetObject();
+        const Value& rotationValue = jsonValue[i]["Rotation"].GetObject();
+
+        Vector3D location{ locationValue["X"].GetFloat(), locationValue["Y"].GetFloat(), locationValue["Z"].GetFloat() };
+        Rotator rotation{ rotationValue["Pitch"].GetFloat(), rotationValue["Yaw"].GetFloat(), rotationValue["Roll"].GetFloat() };
+        infoArr.push_back({ location,rotation });
+    }
+}
+
+void JsonComponent::GetPlacedItemInfo(std::vector<pair<Vector3D, int>>& infoArr)
+{
+    ifstream ifs(placedItemInfoFile);
+    if (!ifs.is_open()) {
+        cout << "[Error] : No json file.\n";
+        return;
+    }
+
+    string json((istreambuf_iterator<char>(ifs)), (istreambuf_iterator<char>()));
+
+    rapidjson::Document placedItemInfoDoc = Document(kObjectType);
+    placedItemInfoDoc.Parse(json.c_str());
+
+    const Value& jsonValue = placedItemInfoDoc["Items"];
+
+    for (int i = 0; i < jsonValue.Size(); i++)
+    {
+        const Value& locationValue = jsonValue[i]["Location"].GetObject();
+        Vector3D location{ locationValue["X"].GetFloat(), locationValue["Y"].GetFloat(), locationValue["Z"].GetFloat() };
+        infoArr.push_back({ location,jsonValue[i]["ItemKey"].GetInt() });
     }
 }
 

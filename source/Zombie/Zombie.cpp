@@ -1,6 +1,7 @@
 #include "Zombie.h"
 #include "PathManager.h"
 #include "State/IdleState.h"
+#include "State/WaitState.h"
 #include "../Player/Player.h"
 #include "../Structs/Vector3D.h"
 #include "../Structs/Rotator.h"
@@ -19,9 +20,14 @@ Zombie::~Zombie()
 {
 }
 
-void Zombie::ChangeState()
+void Zombie::RegisterZombieDeadCallback(ZombieDeadCallback zdc)
 {
-	zombieState->ChangeState(shared_from_this());
+	zombieDeadCb = zdc;
+}
+
+void Zombie::RegisterZombieHealthChangedCallback(ZombieHealthChangedCallback zhc)
+{
+	zombieHealthChangedCb = zhc;
 }
 
 void Zombie::Update()
@@ -48,42 +54,9 @@ void Zombie::Update()
 	}
 }
 
-void Zombie::AddPlayerToInRangeMap(shared_ptr<Player> player)
+void Zombie::ChangeState()
 {
-	inRangePlayerMap[player->GetNumber()] = player;
-	if (FindNearestPlayer())
-	{
-		ChangeState();
-	}
-}
-
-void Zombie::RemoveInRangePlayer(const int playerNumber)
-{
-	if (inRangePlayerMap.find(playerNumber) != inRangePlayerMap.end())
-	{
-		inRangePlayerMap.erase(playerNumber);
-	}
-}
-
-void Zombie::AllZombieInfoBitOn()
-{
-	MaskToInfoBit(ZIBT::Location);
-	MaskToInfoBit(ZIBT::Rotation);
-	MaskToInfoBit(ZIBT::State);
-	if (IsTargetValid())
-	{
-		MaskToInfoBit(ZIBT::TargetNumber);
-	}
-}
-
-void Zombie::RegisterZombieDeadCallback(ZombieDeadCallback zdc)
-{
-	zombieDeadCb = zdc;
-}
-
-void Zombie::RegisterZombieHealthChangedCallback(ZombieHealthChangedCallback zhc)
-{
-	zombieHealthChangedCb = zhc;
+	zombieState->ChangeState(shared_from_this());
 }
 
 void Zombie::SetZombieState(ZombieState* newState)
@@ -91,11 +64,6 @@ void Zombie::SetZombieState(ZombieState* newState)
 	zombieState = newState;
 	stateEnum = zombieState->GetStateEnum();
 	MaskToInfoBit(ZIBT::State);
-	if (stateEnum == EZombieState::IDLE)
-	{
-		targetWeakPtr.reset();
-		inRangePlayerMap.clear();
-	}
 }
 
 bool Zombie::FindNearestPlayer()
@@ -140,7 +108,14 @@ bool Zombie::FindNearestPlayer()
 
 	if (nearestNumber == -1)
 	{
-		return false;
+		if (targetWeakPtr.lock())
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 	else
 	{
@@ -152,7 +127,11 @@ bool Zombie::FindNearestPlayer()
 				return true;
 			}
 		}
-		return FindNearestPlayer();
+		else
+		{
+			RemoveInRangePlayer(nearestNumber);
+			return FindNearestPlayer();
+		}
 	}
 }
 
@@ -161,12 +140,16 @@ void Zombie::ProcessMovement()
 	pathManager->ProcessMovement();
 }
 
-bool Zombie::IsTargetValid()
+bool Zombie::Waiting()
 {
-	if (auto shPtr = targetWeakPtr.lock())
+	elapsedWaitingTime += 0.008f;
+	if (elapsedWaitingTime >= waitingTime)
+	{
+		elapsedWaitingTime = 0.f;
+		damageCount = 0;
 		return true;
-	else
-		return false;
+	}
+	return false;
 }
 
 void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest, const float speed)
@@ -187,6 +170,150 @@ void Zombie::AddMovement(const Vector3D& direction, const Vector3D& dest, const 
 	MaskToInfoBit(ZIBT::Location);
 }
 
+void Zombie::AddPlayerToInRangeMap(shared_ptr<Player> player)
+{
+	inRangePlayerMap[player->GetNumber()] = player;
+	if (FindNearestPlayer())
+	{
+		ChangeState();
+	}
+}
+
+void Zombie::RemoveInRangePlayer(const int playerNumber)
+{
+	if (inRangePlayerMap.find(playerNumber) != inRangePlayerMap.end())
+	{
+		inRangePlayerMap.erase(playerNumber);
+	}
+}
+
+void Zombie::CheckTargetAndCancelTargetting(const int playerNumber)
+{
+	if (auto targetSharedPtr = targetWeakPtr.lock())
+	{
+		if (targetSharedPtr->GetNumber() == playerNumber)
+		{
+			SetZombieState(IdleState::GetInstance());
+		}
+	}
+}
+
+void Zombie::StartPathfindingTimer()
+{
+	isAblePathfinding = false;
+	bStartPathfindingCooldownTime = true;
+}
+
+void Zombie::ClearPathfindingTimer()
+{
+	elapsedPathfindingTime = 0.f;
+	bStartPathfindingCooldownTime = false;
+	isAblePathfinding = true;
+}
+
+void Zombie::UpdatePathfindingTime()
+{
+	if (bStartPathfindingCooldownTime == false)
+		return;
+
+	elapsedPathfindingTime += 0.008f;
+	if (elapsedPathfindingTime >= pathfindingCooldownTime)
+	{
+		ClearPathfindingTimer();
+	}
+}
+
+void Zombie::ClearStateStatus()
+{
+	pathManager->ClearPathStatus();
+	elapsedWaitingTime = 0.f;
+}
+
+void Zombie::SerializeData(ostream& stream)
+{
+	if (sendInfoBitMask == 0)
+		return;
+
+	stream << GetNumber() << "\n";
+	stream << sendInfoBitMask << "\n";
+	const int bitMax = static_cast<int>(ZIBT::MAX);
+	for (int bit = 0; bit < bitMax; bit++)
+	{
+		if (sendInfoBitMask & (1 << bit))
+		{
+			SaveInfoToPacket(stream, bit);
+			sendInfoBitMask &= ~(1 << bit);
+		}
+	}
+}
+
+void Zombie::AllZombieInfoBitOn()
+{
+	MaskToInfoBit(ZIBT::Location);
+	MaskToInfoBit(ZIBT::Rotation);
+	MaskToInfoBit(ZIBT::State);
+	if (IsTargetValid())
+	{
+		MaskToInfoBit(ZIBT::TargetNumber);
+	}
+}
+
+bool Zombie::IsTargetValid()
+{
+	if (auto shPtr = targetWeakPtr.lock())
+		return true;
+	else
+		return false;
+}
+
+void Zombie::SaveInfoToPacket(ostream& stream, const int bitType)
+{
+	ZIBT type = static_cast<ZIBT>(bitType);
+	switch (type)
+	{
+	case ZIBT::Location:
+	{
+		SerializeLocation(stream);
+		break;
+	}
+	case ZIBT::Rotation:
+	{
+		SerializeRotation(stream);
+		break;
+	}
+	case ZIBT::State:
+	{
+		stream << static_cast<int>(stateEnum) << "\n";
+		break;
+	}
+	case ZIBT::TargetNumber:
+	{
+		if (auto targetSharedPtr = targetWeakPtr.lock())
+			stream << targetSharedPtr->GetNumber() << "\n";
+		break;
+	}
+	case ZIBT::NextLocation:
+	{
+		stream << nextLocation;
+		break;
+	}
+	}
+}
+
+void Zombie::MaskToInfoBit(const ZIBT bitType)
+{
+	sendInfoBitMask |= (1 << static_cast<int>(bitType));
+}
+
+void Zombie::InitializeInfo()
+{
+	SetZombieState(IdleState::GetInstance());
+	targetWeakPtr.reset();
+	inRangePlayerMap.clear();
+	health = maxHealth;
+	sendInfoBitMask = 0;
+}
+
 PathManager* Zombie::GetPathManager()
 {
 	return pathManager.get();
@@ -202,29 +329,6 @@ void Zombie::SetNextGrid(const Vector3D& nextLoc)
 {
 	nextLocation = nextLoc;
 	MaskToInfoBit(ZIBT::NextLocation);
-}
-
-void Zombie::Activate()
-{
-	isActive = true;
-}
-
-void Zombie::Deactivate()
-{
-	isActive = false;
-	InitializeInfo();
-}
-
-bool Zombie::Waiting()
-{
-	elapsedWaitingTime += 0.008f;
-	if (elapsedWaitingTime >= waitingTime)
-	{
-		elapsedWaitingTime = 0.f;
-		damageCount = 0;
-		return true;
-	}
-	return false;
 }
 
 void Zombie::SetTargetPlayer(shared_ptr<Player> player)
@@ -255,46 +359,6 @@ bool Zombie::GetTargetLocation(Vector3D& location)
 	return false;
 }
 
-void Zombie::CheckTargetAndCancelTargetting(const int playerNumber)
-{
-	if (auto targetSharedPtr = targetWeakPtr.lock())
-	{
-		if (targetSharedPtr->GetNumber() == playerNumber)
-		{
-			SetZombieState(IdleState::GetInstance());
-		}
-	}
-}
-
-void Zombie::SerializeData(ostream& stream)
-{
-	if (sendInfoBitMask == 0)
-		return;
-
-	stream << GetNumber() << "\n";
-	stream << sendInfoBitMask << "\n";
-	const int bitMax = static_cast<int>(ZIBT::MAX);
-	for (int bit = 0; bit < bitMax; bit++)
-	{
-		if (sendInfoBitMask & (1 << bit))
-		{
-			SaveInfoToPacket(stream, bit);
-			sendInfoBitMask &= ~(1 << bit);
-		}
-	}
-}
-
-void Zombie::TakeDamage(const float damage)
-{
-	health = max(health - damage, 0.f);
-	zombieHealthChangedCb(GetNumber(), health, false);
-	if (health == 0.f)
-	{
-		Deactivate();
-		zombieDeadCb(GetNumber());
-	}
-}
-
 void Zombie::BitingAttackToTarget()
 {
 	if (auto targetSharedPtr = targetWeakPtr.lock())
@@ -307,56 +371,17 @@ void Zombie::BitingAttackToTarget()
 	}
 }
 
-void Zombie::SaveInfoToPacket(ostream& stream, const int bitType)
+void Zombie::TakeDamage(const float damage)
 {
-	ZIBT type = static_cast<ZIBT>(bitType);
-	switch (type)
+	health = max(health - damage, 0.f);
+	cout << "[Log] : 좀비 " << GetNumber() << " 체력 : " << health << "\n";
+	zombieHealthChangedCb(GetNumber(), health, false);
+	if (health == 0.f)
 	{
-		case ZIBT::Location:
-		{
-			SerializeLocation(stream);
-			break;
-		}
-		case ZIBT::Rotation:
-		{
-			SerializeRotation(stream);
-			break;
-		}
-		case ZIBT::State:
-		{
-			stream << static_cast<int>(stateEnum) << "\n";
-			break;
-		}
-		case ZIBT::TargetNumber:
-		{
-			if(auto targetSharedPtr = targetWeakPtr.lock())
-				stream << targetSharedPtr->GetNumber() << "\n";
-			break;
-		}
-		case ZIBT::NextLocation:
-		{
-			stream << nextLocation;
-			break;
-		}
+		zombieDeadCb(GetNumber());
 	}
-}
-
-void Zombie::MaskToInfoBit(const ZIBT bitType)
-{
-	sendInfoBitMask |= (1 << static_cast<int>(bitType));
-}
-
-void Zombie::InitializeInfo()
-{
-	SetZombieState(IdleState::GetInstance());
-	targetWeakPtr.reset();
-	inRangePlayerMap.clear();
-	health = maxHealth;
-	sendInfoBitMask = 0;
-}
-
-void Zombie::ClearStateStatus()
-{
-	pathManager->ClearPathStatus();
-	elapsedWaitingTime = 0.f;
+	else
+	{
+		SetZombieState(WaitState::GetInstance());
+	}
 }

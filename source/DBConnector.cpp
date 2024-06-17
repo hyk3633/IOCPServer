@@ -112,34 +112,41 @@ bool DBConnector::ExcuteQuery(const string& id, const string& pw, EQueryType que
 	// Äõ¸® ½ÇÇà 
 	retcode = SQLExecDirect(hstmt, (wchar_t*)query.c_str(), SQL_NTS);
 
-	if (retcode == SQL_SUCCESS)
+	if (queryType == EQueryType::LOGIN)
 	{
-		char ret_id[ACCOUNT_CHAR_SIZE], ret_pw[ACCOUNT_CHAR_SIZE];
-		ZeroMemory(&ret_id, ACCOUNT_CHAR_SIZE);
-		ZeroMemory(&ret_pw, ACCOUNT_CHAR_SIZE);
-		SQLLEN slen_id = 0, slen_pw = 0;
+		if (retcode == SQL_SUCCESS)
+		{
+			char ret_id[ACCOUNT_CHAR_SIZE], ret_pw[ACCOUNT_CHAR_SIZE];
+			ZeroMemory(&ret_id, ACCOUNT_CHAR_SIZE);
+			ZeroMemory(&ret_pw, ACCOUNT_CHAR_SIZE);
+			SQLLEN slen_id = 0, slen_pw = 0;
 
-		retcode = SQLBindCol(hstmt, 1, SQL_C_CHAR, ret_id, ACCOUNT_CHAR_SIZE, &slen_id);
-		retcode = SQLBindCol(hstmt, 2, SQL_C_CHAR, ret_pw, ACCOUNT_CHAR_SIZE, &slen_pw);
+			retcode = SQLBindCol(hstmt, 1, SQL_C_CHAR, ret_id, ACCOUNT_CHAR_SIZE, &slen_id);
+			retcode = SQLBindCol(hstmt, 2, SQL_C_CHAR, ret_pw, ACCOUNT_CHAR_SIZE, &slen_pw);
 
-		do {
-			retcode = SQLFetch(hstmt);
-		} while (retcode != SQL_NO_DATA);
+			do {
+				retcode = SQLFetch(hstmt);
+			} while (retcode != SQL_NO_DATA);
 
-		SQLCloseCursor(hstmt);
+			SQLCloseCursor(hstmt);
 
-		if (strlen(ret_id) == 0 || strlen(ret_pw) == 0) 
+			if (strlen(ret_id) == 0 || strlen(ret_pw) == 0)
+				return false;
+			else
+				return true;
+		}
+	}
+	else if (queryType == EQueryType::SIGNUP)
+	{
+		if (retcode != SQL_SUCCESS)
+		{
+			ErrorDisplay(retcode);
+			if (isPrimaryKeyError)
+				isPrimaryKeyError = false;
 			return false;
-		else
-			return true;
+		}
+		return true;
 	}
-	else
-	{
-		ErrorDisplay(retcode);
-		if (isPrimaryKeyError)
-			isPrimaryKeyError = false;
-	}
-
 	return false;
 }
 
